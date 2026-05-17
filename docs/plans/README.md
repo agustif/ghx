@@ -1,0 +1,26 @@
+# ghx plan index
+
+Status: active
+Date: 2026-05-17
+
+This directory holds implementation plans for the fork-specific `ghx` roadmap.
+
+## Plans
+
+| Plan | Purpose |
+| --- | --- |
+| [Scoped account rollout](scoped-account-rollout.md) | Finish `.ghaccount`, cwd/session scope, status visibility, and context doctor work. |
+| [Generated API proxies](generated-api-proxies.md) | Build the typed REST/GraphQL proxy substrate and first Actions subset. |
+| [Official surface mining](official-surface-mining.md) | Generate coverage and gap reports from official GitHub sources. |
+| [Workflows and extensions](workflows-and-extensions.md) | Adopt `gh aw`, bundle proven extensions, and wrap `gh attach`. |
+| [Agent progress contract](agent-progress-contract.md) | Standardize `0/100`, task trees, and progress logs for agent-friendly commands. |
+| [First delivery slices](first-delivery-slices.md) | Read-only-first plan for `ghx ctx`, PR readiness, review threads, CI doctor, and rules explanation. |
+
+## Current order
+
+1. Generated validated API proxy spike.
+2. Scoped account context commands.
+3. PR readiness and review threads.
+4. CI doctor and pending deployments.
+5. Rules, deployments, security inbox.
+6. Extension bundle and workflow companion polish in parallel where it reduces custom work.

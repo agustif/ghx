@@ -4,6 +4,8 @@ Status: draft
 Date: 2026-05-17
 Scope: gaps between the current `ghx` command surface and the GitHub API/product surfaces that are exposed by REST or GraphQL but not made operationally first-class by the CLI.
 
+Companion docs: [ghx index](ghx.md), [ADR index](adr/README.md), [plan index](plans/README.md).
+
 ## Current local surface
 
 The local fork currently exposes the same broad groups as upstream `gh`, plus fork-specific account-scoping work:
