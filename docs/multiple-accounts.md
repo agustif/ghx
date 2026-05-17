@@ -97,6 +97,50 @@ solutions):
 "williammartin"
 ```
 
+## Scoped accounts in ghx
+
+The `ghx` fork keeps upstream `gh` behavior available while adding non-global account selection. The default
+`gh auth switch` behavior still changes the host-global active account, but scoped switches can bind an account to
+a working tree or session without rewriting the active account for every other terminal.
+
+```
+➜ ghx auth switch --user williammartin --scope cwd
+✓ Set cwd account for github.com to williammartin
+
+➜ ghx api /user | jq .login
+"williammartin"
+```
+
+For a purely local project default, write the account name to `.ghaccount` at the project root. `ghx` searches upward
+from the invocation directory and uses the nearest file:
+
+```
+➜ printf "williammartin\n" > .ghaccount
+➜ ghx api /user | jq .login
+"williammartin"
+```
+
+`.ghaccount` is intended to be local machine state, not repo policy. Add it to your global git ignore if you do not
+want account preferences committed.
+
+`--scope cwd` stores the absolute path of the current directory in gh config by default. Child directories inherit the
+closest configured path, so repository-specific choices continue to work from nested package directories even without a
+`.ghaccount` file.
+
+Session scope is selected with `GH_ACCOUNT_SESSION`:
+
+```
+➜ ghx auth switch --user wilmartin_microsoft --scope session --selector work
+✓ Set session account for github.com to wilmartin_microsoft
+
+➜ GH_ACCOUNT_SESSION=work ghx api /user | jq .login
+"wilmartin_microsoft"
+```
+
+For one process, `GH_ACCOUNT=<user>` overrides everything except explicit token environment variables. `GH_ACCOUNT_SESSION`
+overrides `.ghaccount` and cwd scopes for a named shell/session. `GH_TOKEN` and `GITHUB_TOKEN` still take priority because
+explicit token environment variables are already the strongest authentication signal in `gh`.
+
 Finally, running `gh auth logout` presents a prompt when there are multiple choices for logout, and switches account
 if there are any remaining logged into the host:
 

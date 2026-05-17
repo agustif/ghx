@@ -13,6 +13,9 @@
 //     - SOURCE_DATE_EPOCH: enables reproducible builds
 //     - GO_LDFLAGS
 //
+//   bin/ghx:
+//     Builds the rebranded scoped-account executable.
+//
 //   manpages:
 //     Builds the man pages under `share/man/man1/`.
 //
@@ -38,37 +41,41 @@ import (
 )
 
 var tasks = map[string]func(string) error{
-	"bin/gh": func(exe string) error {
-		info, err := os.Stat(exe)
-		if err == nil && !sourceFilesLaterThan(info.ModTime()) {
-			fmt.Printf("%s: `%s` is up to date.\n", self, exe)
-			return nil
-		}
-
-		ldflags := os.Getenv("GO_LDFLAGS")
-		ldflags = fmt.Sprintf("-X github.com/cli/cli/v2/internal/build.Version=%s %s", version(), ldflags)
-		ldflags = fmt.Sprintf("-X github.com/cli/cli/v2/internal/build.Date=%s %s", date(), ldflags)
-		if oauthSecret := os.Getenv("GH_OAUTH_CLIENT_SECRET"); oauthSecret != "" {
-			ldflags = fmt.Sprintf("-X github.com/cli/cli/v2/internal/authflow.oauthClientSecret=%s %s", oauthSecret, ldflags)
-			ldflags = fmt.Sprintf("-X github.com/cli/cli/v2/internal/authflow.oauthClientID=%s %s", os.Getenv("GH_OAUTH_CLIENT_ID"), ldflags)
-		}
-
-		buildTags, _ := os.LookupEnv("GO_BUILDTAGS")
-
-		args := []string{"go", "build", "-trimpath"}
-		if buildTags != "" {
-			args = append(args, "-tags", buildTags)
-		}
-		args = append(args, "-ldflags", ldflags, "-o", exe, "./cmd/gh")
-
-		return run(args...)
-	},
+	"bin/gh":  buildCLI,
+	"bin/ghx": buildCLI,
 	"manpages": func(_ string) error {
 		return run("go", "run", "./cmd/gen-docs", "--man-page", "--doc-path", "./share/man/man1/")
 	},
 	"clean": func(_ string) error {
 		return rmrf("bin", "share")
 	},
+}
+
+func buildCLI(exe string) error {
+	info, err := os.Stat(exe)
+	if err == nil && !sourceFilesLaterThan(info.ModTime()) {
+		fmt.Printf("%s: `%s` is up to date.\n", self, exe)
+		return nil
+	}
+
+	ldflags := os.Getenv("GO_LDFLAGS")
+	ldflags = fmt.Sprintf("-X github.com/cli/cli/v2/internal/build.Name=%s %s", commandName(exe), ldflags)
+	ldflags = fmt.Sprintf("-X github.com/cli/cli/v2/internal/build.Version=%s %s", version(), ldflags)
+	ldflags = fmt.Sprintf("-X github.com/cli/cli/v2/internal/build.Date=%s %s", date(), ldflags)
+	if oauthSecret := os.Getenv("GH_OAUTH_CLIENT_SECRET"); oauthSecret != "" {
+		ldflags = fmt.Sprintf("-X github.com/cli/cli/v2/internal/authflow.oauthClientSecret=%s %s", oauthSecret, ldflags)
+		ldflags = fmt.Sprintf("-X github.com/cli/cli/v2/internal/authflow.oauthClientID=%s %s", os.Getenv("GH_OAUTH_CLIENT_ID"), ldflags)
+	}
+
+	buildTags, _ := os.LookupEnv("GO_BUILDTAGS")
+
+	args := []string{"go", "build", "-trimpath"}
+	if buildTags != "" {
+		args = append(args, "-tags", buildTags)
+	}
+	args = append(args, "-ldflags", ldflags, "-o", exe, "./cmd/gh")
+
+	return run(args...)
 }
 
 var self string
@@ -141,6 +148,17 @@ func date() string {
 		}
 	}
 	return t.Format("2006-01-02")
+}
+
+func commandName(exe string) string {
+	name := filepath.Base(exe)
+	if runtime.GOOS == "windows" || strings.HasSuffix(name, ".exe") {
+		name = strings.TrimSuffix(name, ".exe")
+	}
+	if name == "" {
+		return "gh"
+	}
+	return name
 }
 
 func sourceFilesLaterThan(t time.Time) bool {

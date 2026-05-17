@@ -25,14 +25,21 @@ func NewCmdVersion(f *cmdutil.Factory, version, buildDate string) *cobra.Command
 }
 
 func Format(version, buildDate string) string {
+	return FormatForCommand("gh", version, buildDate)
+}
+
+func FormatForCommand(commandName, version, buildDate string) string {
 	version = strings.TrimPrefix(version, "v")
+	if commandName == "" {
+		commandName = "gh"
+	}
 
 	var dateStr string
 	if buildDate != "" {
 		dateStr = fmt.Sprintf(" (%s)", buildDate)
 	}
 
-	return fmt.Sprintf("gh version %s%s\n%s\n", version, dateStr, changelogURL(version))
+	return fmt.Sprintf("%s version %s%s\n%s\n", commandName, version, dateStr, changelogURL(version))
 }
 
 func changelogURL(version string) string {

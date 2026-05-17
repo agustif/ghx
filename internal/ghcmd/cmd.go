@@ -52,6 +52,10 @@ const (
 func Main() exitCode {
 	buildDate := build.Date
 	buildVersion := build.Version
+	buildName := build.Name
+	if buildName == "" {
+		buildName = "gh"
+	}
 	hasDebug, _ := utils.IsDebugEnabled()
 
 	cfg, cfgErr := config.NewConfig()
@@ -68,7 +72,7 @@ func Main() exitCode {
 	}
 	stderr := ioStreams.ErrOut
 
-	ghExecutablePath := executablePath("gh")
+	ghExecutablePath := executablePath(buildName)
 
 	additionalCommonDimensions := ghtelemetry.Dimensions{
 		"version":             strings.TrimPrefix(buildVersion, "v"),
@@ -172,7 +176,7 @@ func Main() exitCode {
 		cobra.MousetrapHelpText = ""
 	}
 
-	rootCmd, err := root.NewCmdRoot(cmdFactory, telemetryService, buildVersion, buildDate)
+	rootCmd, err := root.NewCmdRoot(cmdFactory, telemetryService, buildVersion, buildDate, buildName)
 	if err != nil {
 		fmt.Fprintf(stderr, "failed to create root command: %s\n", err)
 		return exitError

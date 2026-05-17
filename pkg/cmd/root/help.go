@@ -207,25 +207,25 @@ func rootHelpFunc(f *cmdutil.Factory, command *cobra.Command, _ []string) {
 	}
 }
 
-func authHelp() string {
+func authHelp(commandName string) string {
 	if os.Getenv("GITHUB_ACTIONS") == "true" {
-		return heredoc.Doc(`
-			gh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:
+		return heredoc.Docf(`
+			%[1]s: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:
 			  env:
 			    GH_TOKEN: ${{ github.token }}
-		`)
+		`, commandName)
 	}
 
 	if os.Getenv("CI") != "" {
-		return heredoc.Doc(`
-			gh: To use GitHub CLI in automation, set the GH_TOKEN environment variable.
-		`)
+		return heredoc.Docf(`
+			%[1]s: To use GitHub CLI in automation, set the GH_TOKEN environment variable.
+		`, commandName)
 	}
 
-	return heredoc.Doc(`
-		To get started with GitHub CLI, please run:  gh auth login
+	return heredoc.Docf(`
+		To get started with GitHub CLI, please run:  %[1]s auth login
 		Alternatively, populate the GH_TOKEN environment variable with a GitHub API authentication token.
-	`)
+	`, commandName)
 }
 
 func findCommand(cmd *cobra.Command, name string) *cobra.Command {

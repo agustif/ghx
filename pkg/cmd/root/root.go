@@ -60,33 +60,38 @@ func (ae *AuthError) Error() string {
 	return ae.err.Error()
 }
 
-func NewCmdRoot(f *cmdutil.Factory, telemetry ghtelemetry.CommandRecorder, version, buildDate string) (*cobra.Command, error) {
+func NewCmdRoot(f *cmdutil.Factory, telemetry ghtelemetry.CommandRecorder, version, buildDate string, commandNames ...string) (*cobra.Command, error) {
 	io := f.IOStreams
 	cfg, err := f.Config()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read configuration: %s\n", err)
 	}
 
+	commandName := "gh"
+	if len(commandNames) > 0 && commandNames[0] != "" {
+		commandName = commandNames[0]
+	}
+
 	cmd := &cobra.Command{
-		Use:   "gh <command> <subcommand> [flags]",
-		Short: "GitHub CLI",
-		Long:  `Work seamlessly with GitHub from the command line.`,
-		Example: heredoc.Doc(`
-			$ gh issue create
-			$ gh repo clone cli/cli
-			$ gh pr checkout 321
-		`),
+		Use:   fmt.Sprintf("%s <command> <subcommand> [flags]", commandName),
+		Short: commandShort(commandName),
+		Long:  commandLong(commandName),
+		Example: heredoc.Docf(`
+			$ %[1]s issue create
+			$ %[1]s repo clone cli/cli
+			$ %[1]s pr checkout 321
+		`, commandName),
 		Annotations: map[string]string{
-			"versionInfo": versionCmd.Format(version, buildDate),
+			"versionInfo": versionCmd.FormatForCommand(commandName, version, buildDate),
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// require that the user is authenticated before running most commands
 			if cmdutil.IsAuthCheckEnabled(cmd) && !cmdutil.CheckAuth(cfg) {
 				parent := cmd.Parent()
 				if parent != nil && parent.Use == "codespace" {
-					fmt.Fprintln(io.ErrOut, "To get started with GitHub CLI, please run:  gh auth login -s codespace")
+					fmt.Fprintf(io.ErrOut, "To get started with %s, please run:  %s auth login -s codespace\n", commandShort(commandName), commandName)
 				} else {
-					fmt.Fprint(io.ErrOut, authHelp())
+					fmt.Fprint(io.ErrOut, authHelp(commandName))
 				}
 				return &AuthError{}
 			}
@@ -106,7 +111,7 @@ func NewCmdRoot(f *cmdutil.Factory, telemetry ghtelemetry.CommandRecorder, versi
 		cmd.SilenceUsage = true
 
 		// this --version flag is checked in rootHelpFunc
-		cmd.Flags().Bool("version", false, "Show gh version")
+		cmd.Flags().Bool("version", false, fmt.Sprintf("Show %s version", commandName))
 
 		cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
 			rootHelpFunc(f, c, args)
@@ -258,4 +263,18 @@ func NewCmdRoot(f *cmdutil.Factory, telemetry ghtelemetry.CommandRecorder, versi
 	referenceCmd.Long = stringifyReference(cmd)
 	referenceCmd.SetHelpFunc(longPager(f.IOStreams))
 	return cmd, nil
+}
+
+func commandShort(commandName string) string {
+	if commandName == "gh" {
+		return "GitHub CLI"
+	}
+	return fmt.Sprintf("%s - GitHub CLI with scoped accounts", commandName)
+}
+
+func commandLong(commandName string) string {
+	if commandName == "gh" {
+		return "Work seamlessly with GitHub from the command line."
+	}
+	return "Work seamlessly with GitHub from the command line with account selection scoped by environment, session, or working directory."
 }

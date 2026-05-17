@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/keyring"
@@ -20,6 +21,7 @@ const (
 	accessibleColorsKey   = "accessible_colors" // used by cli/go-gh to enable the use of customizable, accessible 4-bit colors.
 	accessiblePrompterKey = "accessible_prompter"
 	aliasesKey            = "aliases"
+	authContextsKey       = "auth_contexts"
 	browserKey            = "browser" // used by cli/go-gh to open URLs in web browsers
 	colorLabelsKey        = "color_labels"
 	editorKey             = "editor" // used by cli/go-gh to open interactive text editor
@@ -35,6 +37,15 @@ const (
 	userKey               = "user"
 	usersKey              = "users"
 	versionKey            = "version"
+)
+
+const (
+	accountFileName      = ".ghaccount"
+	accountEnvVar        = "GH_ACCOUNT"
+	accountSessionEnvVar = "GH_ACCOUNT_SESSION"
+	cwdScope             = "cwd"
+	globalScope          = "global"
+	sessionScope         = "session"
 )
 
 func NewConfig() (gh.Config, error) {
@@ -226,6 +237,7 @@ func defaultFor(key string) o.Option[string] {
 // Behavior is scoped to authentication specific tasks.
 type AuthConfig struct {
 	cfg                 *ghConfig.Config
+	cwdOverride         func() (string, error)
 	defaultHostOverride func() (string, string)
 	hostsOverride       func() []string
 	tokenOverride       func(string) (string, string)
@@ -238,23 +250,31 @@ func (c *AuthConfig) ActiveToken(hostname string) (string, string) {
 	if c.tokenOverride != nil {
 		return c.tokenOverride(hostname)
 	}
+
+	user, scopedUser, userErr := c.activeUser(hostname)
 	token, source := ghauth.TokenFromEnvOrConfig(hostname)
-	if token == "" {
-		var user string
+	if token != "" && (source != oauthTokenKey || !scopedUser) {
+		return token, source
+	}
+
+	if userErr == nil {
 		var err error
-		if user, err = c.ActiveUser(hostname); err == nil {
-			token, err = c.TokenFromKeyringForUser(hostname, user)
-		}
-		if err != nil {
-			// We should generally be able to find a token for the active user,
-			// but in some cases such as if the keyring was set up in a very old
-			// version of the CLI, it may only have a unkeyed token, so fallback
-			// to it.
-			token, err = c.TokenFromKeyring(hostname)
-		}
+		token, source, err = c.TokenForUser(hostname, user)
 		if err == nil {
-			source = "keyring"
+			return token, source
 		}
+		if scopedUser {
+			return "", "scoped_account"
+		}
+	}
+
+	if token != "" {
+		return token, source
+	}
+
+	token, err := c.TokenFromKeyring(hostname)
+	if err == nil {
+		source = "keyring"
 	}
 	return token, source
 }
@@ -317,7 +337,31 @@ func (c *AuthConfig) TokenFromKeyringForUser(hostname, username string) (string,
 // ActiveUser will retrieve the username for the active user at the given hostname.
 // This will not be accurate if the oauth token is set from an environment variable.
 func (c *AuthConfig) ActiveUser(hostname string) (string, error) {
+	user, _, err := c.activeUser(hostname)
+	return user, err
+}
+
+func (c *AuthConfig) hostActiveUser(hostname string) (string, error) {
 	return c.cfg.Get([]string{hostsKey, hostname, userKey})
+}
+
+func (c *AuthConfig) hostActiveToken(hostname string) (string, string) {
+	token, source := ghauth.TokenFromEnvOrConfig(hostname)
+	if token != "" {
+		return token, source
+	}
+
+	if user, err := c.hostActiveUser(hostname); err == nil {
+		if token, source, err := c.TokenForUser(hostname, user); err == nil {
+			return token, source
+		}
+	}
+
+	if token, err := c.TokenFromKeyring(hostname); err == nil {
+		return token, "keyring"
+	}
+
+	return "", source
 }
 
 func (c *AuthConfig) Hosts() []string {
@@ -390,12 +434,12 @@ func (c *AuthConfig) Login(hostname, username, token, gitProtocol string, secure
 }
 
 func (c *AuthConfig) SwitchUser(hostname, user string) error {
-	previouslyActiveUser, err := c.ActiveUser(hostname)
+	previouslyActiveUser, err := c.hostActiveUser(hostname)
 	if err != nil {
 		return fmt.Errorf("failed to get active user: %s", err)
 	}
 
-	previouslyActiveToken, previousSource := c.ActiveToken(hostname)
+	previouslyActiveToken, previousSource := c.hostActiveToken(hostname)
 	if previousSource != "keyring" && previousSource != "oauth_token" {
 		return fmt.Errorf("currently active token for %s is from %s", hostname, previousSource)
 	}
@@ -423,6 +467,38 @@ func (c *AuthConfig) SwitchUser(hostname, user string) error {
 	return nil
 }
 
+func (c *AuthConfig) SetScopedUser(hostname, scope, selector, user string) error {
+	if !slices.Contains(c.UsersForHost(hostname), user) {
+		return fmt.Errorf("not logged in to %s account %s", hostname, user)
+	}
+	if _, _, err := c.TokenForUser(hostname, user); err != nil {
+		return err
+	}
+
+	switch scope {
+	case globalScope:
+		return c.SwitchUser(hostname, user)
+	case cwdScope:
+		resolved, err := c.resolveCwdSelector(selector)
+		if err != nil {
+			return err
+		}
+		c.cfg.Set([]string{authContextsKey, hostsKey, hostname, cwdScope, resolved}, user)
+	case sessionScope:
+		if selector == "" {
+			selector = os.Getenv(accountSessionEnvVar)
+		}
+		if selector == "" {
+			return fmt.Errorf("session scope requires a selector or %s", accountSessionEnvVar)
+		}
+		c.cfg.Set([]string{authContextsKey, hostsKey, hostname, sessionScope, selector}, user)
+	default:
+		return fmt.Errorf("unsupported auth scope %q", scope)
+	}
+
+	return ghConfig.Write(c.cfg)
+}
+
 // Logout will remove user, git protocol, and auth token for the given hostname.
 // It will remove the auth token from the encrypted storage if it exists there.
 func (c *AuthConfig) Logout(hostname, username string) error {
@@ -441,7 +517,7 @@ func (c *AuthConfig) Logout(hostname, username string) error {
 	_ = c.cfg.Remove([]string{hostsKey, hostname, usersKey, username})
 
 	// This error is ignorable because we already know there is an active user for the host
-	activeUser, _ := c.ActiveUser(hostname)
+	activeUser, _ := c.hostActiveUser(hostname)
 
 	// If the user we're removing isn't active, then we just write the config
 	if activeUser != username {
@@ -509,6 +585,131 @@ func (c *AuthConfig) TokenForUser(hostname, user string) (string, string, error)
 	}
 
 	return "", "default", fmt.Errorf("no token found for '%s'", user)
+}
+
+func (c *AuthConfig) activeUser(hostname string) (string, bool, error) {
+	if user := os.Getenv(accountEnvVar); user != "" {
+		return user, true, nil
+	}
+
+	if session := os.Getenv(accountSessionEnvVar); session != "" {
+		if user, ok := c.scopedUser(hostname, sessionScope, session); ok {
+			return user, true, nil
+		}
+	}
+
+	if user, ok := c.ghAccountFileUser(); ok {
+		return user, true, nil
+	}
+
+	if user, ok := c.cwdScopedUser(hostname); ok {
+		return user, true, nil
+	}
+
+	user, err := c.cfg.Get([]string{hostsKey, hostname, userKey})
+	return user, false, err
+}
+
+func (c *AuthConfig) scopedUser(hostname, scope, selector string) (string, bool) {
+	user, err := c.cfg.Get([]string{authContextsKey, hostsKey, hostname, scope, selector})
+	if err != nil || user == "" {
+		return "", false
+	}
+	return user, true
+}
+
+func (c *AuthConfig) cwdScopedUser(hostname string) (string, bool) {
+	cwd, err := c.currentWorkingDir()
+	if err != nil {
+		return "", false
+	}
+	cwd = filepath.Clean(cwd)
+
+	roots, err := c.cfg.Keys([]string{authContextsKey, hostsKey, hostname, cwdScope})
+	if err != nil {
+		return "", false
+	}
+
+	var bestRoot string
+	for _, root := range roots {
+		if pathContains(root, cwd) && len(root) > len(bestRoot) {
+			bestRoot = root
+		}
+	}
+	if bestRoot == "" {
+		return "", false
+	}
+
+	return c.scopedUser(hostname, cwdScope, bestRoot)
+}
+
+func (c *AuthConfig) ghAccountFileUser() (string, bool) {
+	cwd, err := c.currentWorkingDir()
+	if err != nil {
+		return "", false
+	}
+
+	dir := filepath.Clean(cwd)
+	for {
+		if user, ok := readGHAccountFile(filepath.Join(dir, accountFileName)); ok {
+			return user, true
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", false
+		}
+		dir = parent
+	}
+}
+
+func readGHAccountFile(path string) (string, bool) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		return line, true
+	}
+
+	return "", false
+}
+
+func (c *AuthConfig) resolveCwdSelector(selector string) (string, error) {
+	if selector == "" {
+		return c.currentWorkingDir()
+	}
+	if filepath.IsAbs(selector) {
+		return filepath.Clean(selector), nil
+	}
+	abs, err := filepath.Abs(selector)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Clean(abs), nil
+}
+
+func (c *AuthConfig) currentWorkingDir() (string, error) {
+	if c.cwdOverride != nil {
+		return c.cwdOverride()
+	}
+	return os.Getwd()
+}
+
+func pathContains(root, cwd string) bool {
+	root = filepath.Clean(root)
+	cwd = filepath.Clean(cwd)
+
+	rel, err := filepath.Rel(root, cwd)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)))
 }
 
 func keyringServiceName(hostname string) string {

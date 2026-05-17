@@ -104,6 +104,7 @@ func NewFromString(cfgStr string) *ghmock.ConfigMock {
 // the blank config and a function that reads any data written to disk.
 func NewIsolatedTestConfig(t *testing.T) (*cfg, func(io.Writer, io.Writer)) {
 	keyring.MockInit()
+	t.Chdir(t.TempDir())
 
 	c := ghConfig.ReadFromString("")
 	cfg := cfg{c}

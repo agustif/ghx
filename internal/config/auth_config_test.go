@@ -2,6 +2,8 @@ package config
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/cli/cli/v2/internal/config/migration"
@@ -13,7 +15,13 @@ import (
 // Note that NewIsolatedTestConfig sets up a Mock keyring as well
 func newTestAuthConfig(t *testing.T) *AuthConfig {
 	cfg, _ := NewIsolatedTestConfig(t)
-	return &AuthConfig{cfg: cfg.cfg}
+	testCwd := t.TempDir()
+	return &AuthConfig{
+		cfg: cfg.cfg,
+		cwdOverride: func() (string, error) {
+			return testCwd, nil
+		},
+	}
 }
 
 func TestTokenFromKeyring(t *testing.T) {
@@ -823,6 +831,127 @@ func TestTokenWithActiveUserNotInKeyringFallsBackToBlank(t *testing.T) {
 	// Then it returns successfully with the fallback token
 	require.Equal(t, "keyring", source)
 	require.Equal(t, "test-token", token)
+}
+
+func TestActiveTokenUsesAccountEnvVar(t *testing.T) {
+	authCfg := newTestAuthConfig(t)
+	_, err := authCfg.Login("github.com", "test-user-1", "test-token-1", "", true)
+	require.NoError(t, err)
+	_, err = authCfg.Login("github.com", "test-user-2", "test-token-2", "", true)
+	require.NoError(t, err)
+	t.Setenv(accountEnvVar, "test-user-1")
+
+	user, err := authCfg.ActiveUser("github.com")
+	require.NoError(t, err)
+	require.Equal(t, "test-user-1", user)
+
+	token, source := authCfg.ActiveToken("github.com")
+	require.Equal(t, "keyring", source)
+	require.Equal(t, "test-token-1", token)
+}
+
+func TestActiveTokenUsesCwdScopedUser(t *testing.T) {
+	root := t.TempDir()
+	child := filepath.Join(root, "child")
+	require.NoError(t, os.Mkdir(child, 0755))
+
+	authCfg := newTestAuthConfig(t)
+	authCfg.cwdOverride = func() (string, error) {
+		return child, nil
+	}
+
+	_, err := authCfg.Login("github.com", "test-user-1", "test-token-1", "", true)
+	require.NoError(t, err)
+	_, err = authCfg.Login("github.com", "test-user-2", "test-token-2", "", true)
+	require.NoError(t, err)
+	require.NoError(t, authCfg.SetScopedUser("github.com", cwdScope, root, "test-user-1"))
+
+	user, err := authCfg.ActiveUser("github.com")
+	require.NoError(t, err)
+	require.Equal(t, "test-user-1", user)
+
+	token, source := authCfg.ActiveToken("github.com")
+	require.Equal(t, "keyring", source)
+	require.Equal(t, "test-token-1", token)
+}
+
+func TestActiveTokenUsesSessionScopedUser(t *testing.T) {
+	authCfg := newTestAuthConfig(t)
+	_, err := authCfg.Login("github.com", "test-user-1", "test-token-1", "", true)
+	require.NoError(t, err)
+	_, err = authCfg.Login("github.com", "test-user-2", "test-token-2", "", true)
+	require.NoError(t, err)
+	require.NoError(t, authCfg.SetScopedUser("github.com", sessionScope, "coasts", "test-user-1"))
+	t.Setenv(accountSessionEnvVar, "coasts")
+
+	user, err := authCfg.ActiveUser("github.com")
+	require.NoError(t, err)
+	require.Equal(t, "test-user-1", user)
+
+	token, source := authCfg.ActiveToken("github.com")
+	require.Equal(t, "keyring", source)
+	require.Equal(t, "test-token-1", token)
+}
+
+func TestActiveTokenUsesGHAccountFile(t *testing.T) {
+	root := t.TempDir()
+	child := filepath.Join(root, "child")
+	require.NoError(t, os.Mkdir(child, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, accountFileName), []byte("# local account\n\ntest-user-1\n"), 0600))
+
+	authCfg := newTestAuthConfig(t)
+	authCfg.cwdOverride = func() (string, error) {
+		return child, nil
+	}
+
+	_, err := authCfg.Login("github.com", "test-user-1", "test-token-1", "", true)
+	require.NoError(t, err)
+	_, err = authCfg.Login("github.com", "test-user-2", "test-token-2", "", true)
+	require.NoError(t, err)
+
+	user, err := authCfg.ActiveUser("github.com")
+	require.NoError(t, err)
+	require.Equal(t, "test-user-1", user)
+
+	token, source := authCfg.ActiveToken("github.com")
+	require.Equal(t, "keyring", source)
+	require.Equal(t, "test-token-1", token)
+}
+
+func TestGHAccountFileUsesNearestParent(t *testing.T) {
+	root := t.TempDir()
+	child := filepath.Join(root, "child")
+	grandchild := filepath.Join(child, "grandchild")
+	require.NoError(t, os.MkdirAll(grandchild, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, accountFileName), []byte("test-user-1\n"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(child, accountFileName), []byte("test-user-2\n"), 0600))
+
+	authCfg := newTestAuthConfig(t)
+	authCfg.cwdOverride = func() (string, error) {
+		return grandchild, nil
+	}
+
+	_, err := authCfg.Login("github.com", "test-user-1", "test-token-1", "", true)
+	require.NoError(t, err)
+	_, err = authCfg.Login("github.com", "test-user-2", "test-token-2", "", true)
+	require.NoError(t, err)
+
+	user, err := authCfg.ActiveUser("github.com")
+	require.NoError(t, err)
+	require.Equal(t, "test-user-2", user)
+
+	token, source := authCfg.ActiveToken("github.com")
+	require.Equal(t, "keyring", source)
+	require.Equal(t, "test-token-2", token)
+}
+
+func TestSetScopedUserRejectsUnknownAccount(t *testing.T) {
+	authCfg := newTestAuthConfig(t)
+	_, err := authCfg.Login("github.com", "test-user-1", "test-token-1", "", true)
+	require.NoError(t, err)
+
+	err = authCfg.SetScopedUser("github.com", cwdScope, t.TempDir(), "missing-user")
+	require.ErrorContains(t, err, "not logged in to github.com account missing-user")
 }
 
 func TestLogoutRightAfterMigrationRemovesHost(t *testing.T) {

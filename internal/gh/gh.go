@@ -143,6 +143,9 @@ type AuthConfig interface {
 	// SwitchUser switches the active user for a given hostname.
 	SwitchUser(hostname, user string) error
 
+	// SetScopedUser sets the active user for a scope without changing the global host account.
+	SetScopedUser(hostname, scope, selector, user string) error
+
 	// Logout will remove user, git protocol, and auth token for the given hostname.
 	// It will remove the auth token from the encrypted storage if it exists there.
 	Logout(hostname, username string) error

@@ -2,6 +2,26 @@
 
 `gh` is GitHub on the command line. It brings pull requests, issues, and other GitHub concepts to the terminal next to where you are already working with `git` and your code.
 
+## ghx fork
+
+This fork also builds `ghx`, a rebranded GitHub CLI binary with scoped account selection. `ghx` keeps upstream
+commands compatible while allowing account bindings by environment (`GH_ACCOUNT`), named session
+(`GH_ACCOUNT_SESSION`), local `.ghaccount` files, or working directory via `ghx auth switch --scope cwd`.
+
+Build it locally with:
+
+```shell
+$ make bin/ghx
+```
+
+Install it without replacing upstream `gh` with:
+
+```shell
+$ make install-ghx prefix=$HOME/.local
+```
+
+To use it as the default `gh` on a machine, place a `gh` symlink to `ghx` earlier on `PATH`.
+
 ![screenshot of gh pr status](https://user-images.githubusercontent.com/98482/84171218-327e7a80-aa40-11ea-8cd1-5177fc2d0e72.png)
 
 GitHub CLI is supported for users on GitHub.com, GitHub Enterprise Cloud, and GitHub Enterprise Server 2.20+ with support for macOS, Windows, and Linux.

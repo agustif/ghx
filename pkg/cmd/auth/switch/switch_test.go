@@ -44,6 +44,14 @@ func TestNewCmdSwitch(t *testing.T) {
 			},
 		},
 		{
+			name:  "scope and selector flags",
+			input: "--scope cwd --selector /tmp/project",
+			expectedOpts: SwitchOptions{
+				Scope:    "cwd",
+				Selector: "/tmp/project",
+			},
+		},
+		{
 			name:           "positional args is an error",
 			input:          "some-positional-arg",
 			expectedErrMsg: "accepts 0 arg(s), received 1",
@@ -437,4 +445,45 @@ func TestSwitchRun(t *testing.T) {
 			require.Contains(t, stderr.String(), tt.expectedSuccess.stderr)
 		})
 	}
+}
+
+func TestSwitchRunCwdScopeDoesNotChangeGlobalActiveUser(t *testing.T) {
+	cfg, readConfigs := config.NewIsolatedTestConfig(t)
+	authCfg := cfg.Authentication()
+	_, err := authCfg.Login("github.com", "inactive-user", "inactive-user-token", "ssh", true)
+	require.NoError(t, err)
+	_, err = authCfg.Login("github.com", "active-user", "active-user-token", "ssh", true)
+	require.NoError(t, err)
+
+	ios, _, _, stderr := iostreams.Test()
+	opts := SwitchOptions{
+		Config: func() (gh.Config, error) {
+			return cfg, nil
+		},
+		IO:       ios,
+		Hostname: "github.com",
+		Username: "inactive-user",
+		Scope:    "cwd",
+		Selector: t.TempDir(),
+	}
+
+	err = switchRun(&opts)
+	require.NoError(t, err)
+
+	activeUser, err := authCfg.ActiveUser("github.com")
+	require.NoError(t, err)
+	require.Equal(t, "active-user", activeUser)
+
+	activeToken, err := authCfg.TokenFromKeyring("github.com")
+	require.NoError(t, err)
+	require.Equal(t, "active-user-token", activeToken)
+
+	configBuf := bytes.Buffer{}
+	hostsBuf := bytes.Buffer{}
+	readConfigs(&configBuf, &hostsBuf)
+
+	require.Contains(t, configBuf.String(), "auth_contexts:")
+	require.Contains(t, configBuf.String(), "inactive-user")
+	require.Contains(t, stderr.String(), "✓ Set cwd account for github.com to inactive-user")
+	require.Equal(t, "github.com:\n    git_protocol: ssh\n    users:\n        inactive-user:\n        active-user:\n    user: active-user\n", hostsBuf.String())
 }

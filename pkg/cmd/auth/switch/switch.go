@@ -19,6 +19,8 @@ type SwitchOptions struct {
 	Prompter shared.Prompt
 	Hostname string
 	Username string
+	Scope    string
+	Selector string
 }
 
 func NewCmdSwitch(f *cmdutil.Factory, runF func(*SwitchOptions) error) *cobra.Command {
@@ -33,10 +35,13 @@ func NewCmdSwitch(f *cmdutil.Factory, runF func(*SwitchOptions) error) *cobra.Co
 		Args:  cobra.ExactArgs(0),
 		Short: "Switch active GitHub account",
 		Long: heredoc.Docf(`
-			Switch the active account for a GitHub host.
+				Switch the active account for a GitHub host.
 
-			This command changes the authentication configuration that will
-			be used when running commands targeting the specified GitHub host.
+				This command changes the authentication configuration that will
+				be used when running commands targeting the specified GitHub host.
+				By default the change is global for the host. Use %[1]s--scope cwd%[1]s
+				or %[1]s--scope session%[1]s to bind the account without changing the
+				host-global active account.
 
 			If the specified host has two accounts, the active account will be switched
 			automatically. If there are more than two accounts, disambiguation will be
@@ -48,9 +53,15 @@ func NewCmdSwitch(f *cmdutil.Factory, runF func(*SwitchOptions) error) *cobra.Co
 			# Select what host and account to switch to via a prompt
 			$ gh auth switch
 
-			# Switch the active account on a specific host to a specific user
-			$ gh auth switch --hostname enterprise.internal --user monalisa
-		`),
+				# Switch the active account on a specific host to a specific user
+				$ gh auth switch --hostname enterprise.internal --user monalisa
+
+				# Use a specific account only for the current working tree
+				$ gh auth switch --user monalisa --scope cwd
+
+				# Use a specific account for a named session
+				$ gh auth switch --user monalisa --scope session --selector coasts
+			`),
 		RunE: func(c *cobra.Command, args []string) error {
 			if runF != nil {
 				return runF(&opts)
@@ -62,6 +73,8 @@ func NewCmdSwitch(f *cmdutil.Factory, runF func(*SwitchOptions) error) *cobra.Co
 
 	cmd.Flags().StringVarP(&opts.Hostname, "hostname", "h", "", "The hostname of the GitHub instance to switch account for")
 	cmd.Flags().StringVarP(&opts.Username, "user", "u", "", "The account to switch to")
+	cmd.Flags().StringVar(&opts.Scope, "scope", "", "Where to apply the switch: global, cwd, or session")
+	cmd.Flags().StringVar(&opts.Selector, "selector", "", "Path for cwd scope or name for session scope")
 
 	return cmd
 }
@@ -155,6 +168,10 @@ func switchRun(opts *SwitchOptions) error {
 		username = candidates[selected].user
 	}
 
+	if opts.Scope == "" {
+		opts.Scope = "global"
+	}
+
 	if src, writeable := shared.AuthTokenWriteable(authCfg, hostname); !writeable {
 		fmt.Fprintf(opts.IO.ErrOut, "The value of the %s environment variable is being used for authentication.\n", src)
 		fmt.Fprint(opts.IO.ErrOut, "To have GitHub CLI manage credentials instead, first clear the value from the environment.\n")
@@ -162,6 +179,17 @@ func switchRun(opts *SwitchOptions) error {
 	}
 
 	cs := opts.IO.ColorScheme()
+
+	if opts.Scope != "global" {
+		if err := authCfg.SetScopedUser(hostname, opts.Scope, opts.Selector, username); err != nil {
+			return err
+		}
+
+		fmt.Fprintf(opts.IO.ErrOut, "%s Set %s account for %s to %s\n",
+			cs.SuccessIcon(), opts.Scope, hostname, cs.Bold(username))
+
+		return nil
+	}
 
 	if err := authCfg.SwitchUser(hostname, username); err != nil {
 		fmt.Fprintf(opts.IO.ErrOut, "%s Failed to switch account for %s to %s\n",

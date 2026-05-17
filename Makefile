@@ -16,6 +16,10 @@ endif
 bin/gh$(EXE): script/build$(EXE)
 	@script/build$(EXE) $@
 
+.PHONY: bin/ghx$(EXE)
+bin/ghx$(EXE): script/build$(EXE)
+	@script/build$(EXE) $@
+
 script/build$(EXE): script/build.go
 ifeq ($(EXE),)
 	GOOS= GOARCH= GOARM= GOFLAGS= CGO_ENABLED= go build -o $@ $<
@@ -99,6 +103,11 @@ install: bin/gh manpages completions
 	install -m644 ./share/fish/vendor_completions.d/gh.fish ${DESTDIR}${datadir}/fish/vendor_completions.d/gh.fish
 	install -d ${DESTDIR}${datadir}/zsh/site-functions
 	install -m644 ./share/zsh/site-functions/_gh ${DESTDIR}${datadir}/zsh/site-functions/_gh
+
+.PHONY: install-ghx
+install-ghx: bin/ghx
+	install -d ${DESTDIR}${bindir}
+	install -m755 bin/ghx ${DESTDIR}${bindir}/
 
 .PHONY: uninstall
 uninstall:
