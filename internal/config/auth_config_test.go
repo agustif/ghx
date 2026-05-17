@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/cli/cli/v2/internal/config/migration"
+	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/keyring"
 	ghConfig "github.com/cli/go-gh/v2/pkg/config"
 	"github.com/stretchr/testify/require"
@@ -845,6 +846,14 @@ func TestActiveTokenUsesAccountEnvVar(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "test-user-1", user)
 
+	info, err := authCfg.ActiveUserInfo("github.com")
+	require.NoError(t, err)
+	require.Equal(t, gh.ActiveUserInfo{
+		Username: "test-user-1",
+		Source:   gh.ActiveUserSourceAccountEnv,
+		Scoped:   true,
+	}, info)
+
 	token, source := authCfg.ActiveToken("github.com")
 	require.Equal(t, "keyring", source)
 	require.Equal(t, "test-token-1", token)
@@ -870,6 +879,15 @@ func TestActiveTokenUsesCwdScopedUser(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "test-user-1", user)
 
+	info, err := authCfg.ActiveUserInfo("github.com")
+	require.NoError(t, err)
+	require.Equal(t, gh.ActiveUserInfo{
+		Username: "test-user-1",
+		Source:   gh.ActiveUserSourceCwd,
+		Selector: root,
+		Scoped:   true,
+	}, info)
+
 	token, source := authCfg.ActiveToken("github.com")
 	require.Equal(t, "keyring", source)
 	require.Equal(t, "test-token-1", token)
@@ -887,6 +905,15 @@ func TestActiveTokenUsesSessionScopedUser(t *testing.T) {
 	user, err := authCfg.ActiveUser("github.com")
 	require.NoError(t, err)
 	require.Equal(t, "test-user-1", user)
+
+	info, err := authCfg.ActiveUserInfo("github.com")
+	require.NoError(t, err)
+	require.Equal(t, gh.ActiveUserInfo{
+		Username: "test-user-1",
+		Source:   gh.ActiveUserSourceSessionEnv,
+		Selector: "coasts",
+		Scoped:   true,
+	}, info)
 
 	token, source := authCfg.ActiveToken("github.com")
 	require.Equal(t, "keyring", source)
@@ -912,6 +939,15 @@ func TestActiveTokenUsesGHAccountFile(t *testing.T) {
 	user, err := authCfg.ActiveUser("github.com")
 	require.NoError(t, err)
 	require.Equal(t, "test-user-1", user)
+
+	info, err := authCfg.ActiveUserInfo("github.com")
+	require.NoError(t, err)
+	require.Equal(t, gh.ActiveUserInfo{
+		Username: "test-user-1",
+		Source:   gh.ActiveUserSourceAccountFile,
+		Selector: filepath.Join(root, accountFileName),
+		Scoped:   true,
+	}, info)
 
 	token, source := authCfg.ActiveToken("github.com")
 	require.Equal(t, "keyring", source)
@@ -939,6 +975,15 @@ func TestGHAccountFileUsesNearestParent(t *testing.T) {
 	user, err := authCfg.ActiveUser("github.com")
 	require.NoError(t, err)
 	require.Equal(t, "test-user-2", user)
+
+	info, err := authCfg.ActiveUserInfo("github.com")
+	require.NoError(t, err)
+	require.Equal(t, gh.ActiveUserInfo{
+		Username: "test-user-2",
+		Source:   gh.ActiveUserSourceAccountFile,
+		Selector: filepath.Join(child, accountFileName),
+		Scoped:   true,
+	}, info)
 
 	token, source := authCfg.ActiveToken("github.com")
 	require.Equal(t, "keyring", source)

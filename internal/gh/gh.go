@@ -173,6 +173,27 @@ type AuthConfig interface {
 	SetDefaultHost(host, source string)
 }
 
+const (
+	// ActiveUserSourceAccountEnv indicates GH_ACCOUNT selected the active user.
+	ActiveUserSourceAccountEnv = "GH_ACCOUNT"
+	// ActiveUserSourceSessionEnv indicates GH_ACCOUNT_SESSION selected the active user.
+	ActiveUserSourceSessionEnv = "GH_ACCOUNT_SESSION"
+	// ActiveUserSourceAccountFile indicates .ghaccount selected the active user.
+	ActiveUserSourceAccountFile = ".ghaccount"
+	// ActiveUserSourceCwd indicates a persisted cwd scope selected the active user.
+	ActiveUserSourceCwd = "cwd"
+	// ActiveUserSourceHost indicates the host-global active user was selected.
+	ActiveUserSourceHost = "host"
+)
+
+// ActiveUserInfo describes the account selector that resolved an active user.
+type ActiveUserInfo struct {
+	Username string
+	Source   string
+	Selector string
+	Scoped   bool
+}
+
 // AliasConfig defines an interface for managing command aliases.
 type AliasConfig interface {
 	// Get retrieves the expansion for a specified alias.

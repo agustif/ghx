@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -473,6 +474,59 @@ func Test_statusRun(t *testing.T) {
 			`),
 		},
 		{
+			name: "account env source, only active user",
+			opts: StatusOptions{
+				Active: true,
+			},
+			env: map[string]string{
+				"GH_ACCOUNT": "monalisa",
+			},
+			cfgStubs: func(t *testing.T, c gh.Config) {
+				login(t, c, "github.com", "monalisa", "gho_abc123", "https")
+				login(t, c, "github.com", "monalisa-2", "gho_def456", "https")
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(httpmock.REST("GET", ""), httpmock.ScopesResponder("repo,read:org"))
+			},
+			wantOut: heredoc.Doc(`
+				github.com
+				  ✓ Logged in to github.com account monalisa (GH_CONFIG_DIR/hosts.yml)
+				  - Active account: true
+				  - Active account source: GH_ACCOUNT
+				  - Git operations protocol: https
+				  - Token: gho_******
+				  - Token scopes: 'repo', 'read:org'
+			`),
+		},
+		{
+			name: "ghaccount source, only active user",
+			opts: StatusOptions{
+				Active: true,
+			},
+			cfgStubs: func(t *testing.T, c gh.Config) {
+				root := t.TempDir()
+				child := filepath.Join(root, "child")
+				require.NoError(t, os.Mkdir(child, 0755))
+				require.NoError(t, os.WriteFile(filepath.Join(root, ".ghaccount"), []byte("monalisa\n"), 0600))
+				t.Chdir(child)
+
+				login(t, c, "github.com", "monalisa", "gho_abc123", "https")
+				login(t, c, "github.com", "monalisa-2", "gho_def456", "https")
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(httpmock.REST("GET", ""), httpmock.ScopesResponder("repo,read:org"))
+			},
+			wantOut: heredoc.Doc(`
+				github.com
+				  ✓ Logged in to github.com account monalisa (GH_CONFIG_DIR/hosts.yml)
+				  - Active account: true
+				  - Active account source: nearest .ghaccount
+				  - Git operations protocol: https
+				  - Token: gho_******
+				  - Token scopes: 'repo', 'read:org'
+			`),
+		},
+		{
 			name: "multiple hosts with multiple accounts, only active users",
 			opts: StatusOptions{
 				Active: true,
@@ -628,6 +682,29 @@ func Test_statusRun(t *testing.T) {
 					httpmock.WithHeader(httpmock.ScopesResponder("repo,read:org"), "X-Oauth-Scopes", "repo, read:org"))
 			},
 			wantOut: `{"hosts":{"ghe.io":[{"state":"success","active":true,"host":"ghe.io","login":"monalisa-ghe","tokenSource":"GH_CONFIG_DIR/hosts.yml","scopes":"repo, read:org","gitProtocol":"https"}],"github.com":[{"state":"success","active":true,"host":"github.com","login":"monalisa2","tokenSource":"GH_CONFIG_DIR/hosts.yml","scopes":"repo, read:org","gitProtocol":"https"}]}}` + "\n",
+		},
+		{
+			name: "json, ghaccount source with active",
+			opts: StatusOptions{
+				Active: true,
+			},
+			jsonFields: []string{"hosts"},
+			cfgStubs: func(t *testing.T, c gh.Config) {
+				root := t.TempDir()
+				child := filepath.Join(root, "child")
+				require.NoError(t, os.Mkdir(child, 0755))
+				require.NoError(t, os.WriteFile(filepath.Join(root, ".ghaccount"), []byte("monalisa\n"), 0600))
+				t.Chdir(child)
+
+				login(t, c, "github.com", "monalisa", "gho_abc123", "https")
+				login(t, c, "github.com", "monalisa2", "gho_def456", "https")
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.REST("GET", ""),
+					httpmock.WithHeader(httpmock.ScopesResponder("repo,read:org"), "X-Oauth-Scopes", "repo, read:org"))
+			},
+			wantOut: `{"hosts":{"github.com":[{"state":"success","active":true,"host":"github.com","login":"monalisa","tokenSource":"GH_CONFIG_DIR/hosts.yml","scopes":"repo, read:org","gitProtocol":"https","activeUserSource":"nearest .ghaccount"}]}}` + "\n",
 		},
 		{
 			name:       "json, token from env",

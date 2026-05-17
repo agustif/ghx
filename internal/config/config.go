@@ -251,19 +251,19 @@ func (c *AuthConfig) ActiveToken(hostname string) (string, string) {
 		return c.tokenOverride(hostname)
 	}
 
-	user, scopedUser, userErr := c.activeUser(hostname)
+	userInfo, userErr := c.activeUserInfo(hostname)
 	token, source := ghauth.TokenFromEnvOrConfig(hostname)
-	if token != "" && (source != oauthTokenKey || !scopedUser) {
+	if token != "" && (source != oauthTokenKey || !userInfo.Scoped) {
 		return token, source
 	}
 
 	if userErr == nil {
 		var err error
-		token, source, err = c.TokenForUser(hostname, user)
+		token, source, err = c.TokenForUser(hostname, userInfo.Username)
 		if err == nil {
 			return token, source
 		}
-		if scopedUser {
+		if userInfo.Scoped {
 			return "", "scoped_account"
 		}
 	}
@@ -337,8 +337,13 @@ func (c *AuthConfig) TokenFromKeyringForUser(hostname, username string) (string,
 // ActiveUser will retrieve the username for the active user at the given hostname.
 // This will not be accurate if the oauth token is set from an environment variable.
 func (c *AuthConfig) ActiveUser(hostname string) (string, error) {
-	user, _, err := c.activeUser(hostname)
-	return user, err
+	info, err := c.activeUserInfo(hostname)
+	return info.Username, err
+}
+
+// ActiveUserInfo returns the active user and selector source for a hostname.
+func (c *AuthConfig) ActiveUserInfo(hostname string) (gh.ActiveUserInfo, error) {
+	return c.activeUserInfo(hostname)
 }
 
 func (c *AuthConfig) hostActiveUser(hostname string) (string, error) {
@@ -587,27 +592,49 @@ func (c *AuthConfig) TokenForUser(hostname, user string) (string, string, error)
 	return "", "default", fmt.Errorf("no token found for '%s'", user)
 }
 
-func (c *AuthConfig) activeUser(hostname string) (string, bool, error) {
+func (c *AuthConfig) activeUserInfo(hostname string) (gh.ActiveUserInfo, error) {
 	if user := os.Getenv(accountEnvVar); user != "" {
-		return user, true, nil
+		return gh.ActiveUserInfo{
+			Username: user,
+			Source:   gh.ActiveUserSourceAccountEnv,
+			Scoped:   true,
+		}, nil
 	}
 
 	if session := os.Getenv(accountSessionEnvVar); session != "" {
 		if user, ok := c.scopedUser(hostname, sessionScope, session); ok {
-			return user, true, nil
+			return gh.ActiveUserInfo{
+				Username: user,
+				Source:   gh.ActiveUserSourceSessionEnv,
+				Selector: session,
+				Scoped:   true,
+			}, nil
 		}
 	}
 
-	if user, ok := c.ghAccountFileUser(); ok {
-		return user, true, nil
+	if user, path, ok := c.ghAccountFileUser(); ok {
+		return gh.ActiveUserInfo{
+			Username: user,
+			Source:   gh.ActiveUserSourceAccountFile,
+			Selector: path,
+			Scoped:   true,
+		}, nil
 	}
 
-	if user, ok := c.cwdScopedUser(hostname); ok {
-		return user, true, nil
+	if user, root, ok := c.cwdScopedUser(hostname); ok {
+		return gh.ActiveUserInfo{
+			Username: user,
+			Source:   gh.ActiveUserSourceCwd,
+			Selector: root,
+			Scoped:   true,
+		}, nil
 	}
 
 	user, err := c.cfg.Get([]string{hostsKey, hostname, userKey})
-	return user, false, err
+	return gh.ActiveUserInfo{
+		Username: user,
+		Source:   gh.ActiveUserSourceHost,
+	}, err
 }
 
 func (c *AuthConfig) scopedUser(hostname, scope, selector string) (string, bool) {
@@ -618,16 +645,16 @@ func (c *AuthConfig) scopedUser(hostname, scope, selector string) (string, bool)
 	return user, true
 }
 
-func (c *AuthConfig) cwdScopedUser(hostname string) (string, bool) {
+func (c *AuthConfig) cwdScopedUser(hostname string) (string, string, bool) {
 	cwd, err := c.currentWorkingDir()
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
 	cwd = filepath.Clean(cwd)
 
 	roots, err := c.cfg.Keys([]string{authContextsKey, hostsKey, hostname, cwdScope})
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
 
 	var bestRoot string
@@ -637,27 +664,29 @@ func (c *AuthConfig) cwdScopedUser(hostname string) (string, bool) {
 		}
 	}
 	if bestRoot == "" {
-		return "", false
+		return "", "", false
 	}
 
-	return c.scopedUser(hostname, cwdScope, bestRoot)
+	user, ok := c.scopedUser(hostname, cwdScope, bestRoot)
+	return user, bestRoot, ok
 }
 
-func (c *AuthConfig) ghAccountFileUser() (string, bool) {
+func (c *AuthConfig) ghAccountFileUser() (string, string, bool) {
 	cwd, err := c.currentWorkingDir()
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
 
 	dir := filepath.Clean(cwd)
 	for {
-		if user, ok := readGHAccountFile(filepath.Join(dir, accountFileName)); ok {
-			return user, true
+		path := filepath.Join(dir, accountFileName)
+		if user, ok := readGHAccountFile(path); ok {
+			return user, path, true
 		}
 
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", false
+			return "", "", false
 		}
 		dir = parent
 	}
