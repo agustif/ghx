@@ -15,6 +15,7 @@ This directory holds implementation plans for the fork-specific `ghx` roadmap.
 | [Workflows and extensions](workflows-and-extensions.md) | Adopt `gh aw`, bundle proven extensions, and wrap `gh attach`. |
 | [Agent progress contract](agent-progress-contract.md) | Standardize `0/100`, task trees, and progress logs for agent-friendly commands. |
 | [First delivery slices](first-delivery-slices.md) | Read-only-first plan for `ghx ctx`, PR readiness, review threads, CI doctor, and rules explanation. |
+| [`.ghx/` config directory](ghx-config-directory.md) | Layered project-local config inspired by zsh-style user composition, with safety and trust gates. |
 
 ## Current order
 

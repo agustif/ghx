@@ -25,6 +25,7 @@ This index collects the fork-specific plans, ADRs, and implementation notes for 
 5. Bundle and wrap proven extensions before rebuilding their behavior in-tree.
 6. Keep agent progress and collaboration state machine-readable through `p` and `--progress-log`.
 7. Deliver the read-only first slices: `ghx ctx`, `ghx pr ready`, `ghx pr threads`, `ghx ci doctor`, and `ghx rules explain`.
+8. Add a layered `.ghx/` configuration directory for project-local profiles, extension bundles, workflow defaults, and trusted hooks.
 
 ## Operating rules
 

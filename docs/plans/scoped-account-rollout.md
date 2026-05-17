@@ -11,6 +11,7 @@ Make `ghx` reliably select the intended GitHub account per command without chang
 ## Scope
 
 - `.ghaccount` nearest-file lookup.
+- `.ghx/config.yml` and `.ghx/accounts.yml` as the richer future config path.
 - cwd-scoped account selection.
 - session-scoped account selection.
 - explicit env override with `GH_ACCOUNT`.
@@ -27,10 +28,11 @@ Make `ghx` reliably select the intended GitHub account per command without chang
 
 1. Finish tests for account source precedence.
 2. Add docs for `.ghaccount` and ignore patterns.
-3. Add `ghx ctx` read-only command that prints host, account, source, repo, remotes, and token scopes.
-4. Add `ghx ctx explain --json`.
-5. Add `ghx ctx bind --account <login> [--cwd <path>]`.
-6. Add mutation preflight helpers that can show account/repo intent.
+3. Add `.ghx/` config discovery behind `ghx config explain`.
+4. Add `ghx ctx` read-only command that prints host, account, source, repo, remotes, and token scopes.
+5. Add `ghx ctx explain --json`.
+6. Add `ghx ctx bind --account <login> [--cwd <path>]`.
+7. Add mutation preflight helpers that can show account/repo intent.
 
 ## Acceptance checks
 
