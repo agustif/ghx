@@ -74,7 +74,7 @@ func (h Helper) IsConfigured() bool {
 	return h.Cmd != ""
 }
 
-// IsOurs returns true if the helper command is the GitHub CLI credential helper
+// IsOurs returns true if the helper command is the GitHub CLI credential helper.
 func (h Helper) IsOurs() bool {
 	if !strings.HasPrefix(h.Cmd, "!") {
 		return false
@@ -85,7 +85,12 @@ func (h Helper) IsOurs() bool {
 		return false
 	}
 
-	return strings.TrimSuffix(filepath.Base(args[0]), ".exe") == "gh"
+	switch strings.TrimSuffix(filepath.Base(args[0]), ".exe") {
+	case "gh", "ghx":
+		return true
+	default:
+		return false
+	}
 }
 
 // ConfiguredHelper returns the configured git credential helper for a given hostname.

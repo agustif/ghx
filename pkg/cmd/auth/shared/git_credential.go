@@ -28,7 +28,7 @@ func (flow *GitCredentialFlow) Prompt(hostname string) error {
 	var configuredHelperErr error
 	flow.helper, configuredHelperErr = flow.HelperConfig.ConfiguredHelper(hostname)
 	// If the helper is gh itself, then we don't need to ask the user if they want to update their git credentials
-	// because it will happen automatically by virtue of the fact that gh will return the active token.
+	// because it will happen automatically by virtue of the fact that gh or ghx will return the active token.
 	//
 	// Since gh is the helper, this token may be used for git operations, so we'll additionally request the workflow
 	// scope to ensure that git push operations that include workflow changes succeed.

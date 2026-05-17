@@ -104,6 +104,11 @@ func TestHelperIsOurs(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "ours - ghx",
+			cmd:  "!/path/to/ghx auth git-credential",
+			want: true,
+		},
+		{
 			name:        "ours - Windows edition",
 			cmd:         `!'C:\Program Files\GitHub CLI\gh.exe' auth git-credential`,
 			want:        true,
