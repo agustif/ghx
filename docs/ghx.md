@@ -5,10 +5,27 @@ Date: 2026-05-17
 
 This index collects the fork-specific plans, ADRs, and implementation notes for `ghx`.
 
+## Product vision
+
+`ghx` is the account-safe, agent-ready GitHub control plane. It should make it obvious which account, host, repo, scopes, rules, checks, and mutation target a command will use, then expose the deeper GitHub platform as composable terminal workflows.
+
+The product direction is:
+
+- control plane: `ghx ctx` explains account, repo, token, scope, and mutation intent before risky actions
+- operational cockpit: `ghx pr ready`, `ghx ci doctor`, `ghx rules explain`, `ghx env approve`, `ghx deploy timeline`, `ghx mq status`, and `ghx sec inbox`
+- API coverage: generated REST and GraphQL proxies with validated params plus raw escape hatches
+- workflow engine: issue trees, Actions workflows, progress logs, attachments, and audit trails for human and agent collaboration
+- toolchain compatibility: stable JSON and pipe-friendly output first, optional managed companions second
+- identity safety: `.ghaccount`, `.ghx/`, session scopes, and cwd binding make wrong-account mutation hard
+
+The near-term PM rule is to ship one useful read-only control-plane slice at a time, then add mutation only when identity, dry-run, JSON, and audit behavior are proven.
+
 ## Core docs
 
 - [Multiple accounts](multiple-accounts.md): upstream multi-account behavior plus `ghx` scoped account selection.
 - [Gap map](ghx-gap-map.md): feature gap map between current `gh`/`ghx` and the deeper GitHub platform surface.
+- [Research index](research/README.md): broad investigation notes and product angle maps before decisions harden.
+- [RFC index](rfcs/README.md): larger implementation proposals with rollout and validation plans.
 - [ADR index](adr/README.md): accepted architecture decisions for the fork.
 - [Plan index](plans/README.md): implementation plans and sequencing.
 - [API coverage](ghx-api-coverage.md): placeholder for generated REST/GraphQL coverage reports.

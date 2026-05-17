@@ -2,10 +2,20 @@
 
 This is the GitHub CLI (`gh`), a command-line tool for interacting with GitHub. The module path is `github.com/cli/cli/v2`.
 
+## ghx Product Capture
+
+This fork is also the `ghx` account-safe GitHub control-plane fork. When product ideas come up during implementation:
+
+- capture the idea in repo-native form before finishing the session
+- update the relevant `docs/` plan, ADR, gap map, or workflow guide
+- create or attach a GitHub issue or subissue when the roadmap tree exists and GitHub Issues are available
+- put only standing agent behavior in `AGENTS.md`; keep detailed acceptance criteria in docs/issues
+- keep `ghx` companion-tool support compatibility-first: stable JSON, pipe-friendly output, and predictable stdin/args before managed installs for tools such as `jq`, `rg`, `fzf`, `delta`, `gum`, and `yq`
+
 ## Build, Test, and Lint
 
 ```bash
-make                                       # Build (Unix) — outputs bin/gh
+make                                       # Build (Unix) - outputs bin/gh
 go run script/build.go                     # Build (Windows)
 go test ./...                              # All unit tests
 go test ./pkg/cmd/issue/list/... -run TestIssueList_nontty  # Single test
@@ -24,13 +34,13 @@ make lint
 Entry point: `cmd/gh/main.go` → `internal/ghcmd.Main()` → `pkg/cmd/root.NewCmdRoot()`.
 
 Key packages:
-- `pkg/cmd/<command>/<subcommand>/` — CLI command implementations
-- `pkg/cmdutil/` — Factory, error types, flag helpers (`NilStringFlag`, `NilBoolFlag`, `StringEnumFlag`)
-- `pkg/iostreams/` — I/O abstraction with TTY detection, color, pager
-- `pkg/httpmock/` — HTTP mocking for tests
-- `api/` — GitHub API client (GraphQL + REST)
-- `internal/featuredetection/` — GitHub.com vs GHES capability detection
-- `internal/tableprinter/` — Table output for list commands
+- `pkg/cmd/<command>/<subcommand>/` - CLI command implementations
+- `pkg/cmdutil/` - Factory, error types, flag helpers (`NilStringFlag`, `NilBoolFlag`, `StringEnumFlag`)
+- `pkg/iostreams/` - I/O abstraction with TTY detection, color, pager
+- `pkg/httpmock/` - HTTP mocking for tests
+- `api/` - GitHub API client (GraphQL + REST)
+- `internal/featuredetection/` - GitHub.com vs GHES capability detection
+- `internal/tableprinter/` - Table output for list commands
 
 ## Command Structure
 
@@ -47,7 +57,7 @@ A command `gh foo bar` lives in `pkg/cmd/foo/bar/` with `bar.go`, `bar_test.go`,
 Every command follows this structure (see `pkg/cmd/issue/list/list.go`):
 
 1. `Options` struct with `IO`, `HttpClient`, `Config`, `BaseRepo` + flags
-2. `NewCmdFoo(f *cmdutil.Factory, runF func(*FooOptions) error)` constructor — `runF` is the test injection point
+2. `NewCmdFoo(f *cmdutil.Factory, runF func(*FooOptions) error)` constructor - `runF` is the test injection point
 3. Separate `fooRun(opts)` function with the business logic
 
 Key rules:
@@ -133,18 +143,18 @@ for _, tt := range tests {
 ## Code Style
 
 - Add godoc comments to all exported functions, types, and constants
-- Avoid unnecessary code comments — only comment when the *why* isn't obvious from the code
+- Avoid unnecessary code comments - only comment when the *why* isn't obvious from the code
 - Do not comment just to restate what the code does
-- Never use em dashes (—) in code, comments, or documentation; use regular dashes (-) or rewrite the sentence instead
+- Never use em dashes in code, comments, or documentation; use regular dashes (-) or rewrite the sentence instead
 
 ## Error Handling
 
 Error types in `pkg/cmdutil/errors.go`:
-- `FlagErrorf(...)` — flag validation (prints usage)
-- `cmdutil.SilentError` — exit 1, no message
-- `cmdutil.CancelError` — user cancelled
-- `cmdutil.PendingError` — outcome pending
-- `cmdutil.NoResultsError` — empty results
+- `FlagErrorf(...)` - flag validation (prints usage)
+- `cmdutil.SilentError` - exit 1, no message
+- `cmdutil.CancelError` - user cancelled
+- `cmdutil.PendingError` - outcome pending
+- `cmdutil.NoResultsError` - empty results
 
 Use `cmdutil.MutuallyExclusive("message", cond1, cond2)` for mutually exclusive flags.
 
@@ -169,4 +179,4 @@ client.GraphQL(hostname, query, variables, &data)
 client.REST(hostname, "GET", "repos/owner/repo", nil, &data)
 ```
 
-For host resolution, use `cfg.Authentication().DefaultHost()` — not `ghinstance.Default()` which always returns `github.com`.
+For host resolution, use `cfg.Authentication().DefaultHost()` - not `ghinstance.Default()` which always returns `github.com`.

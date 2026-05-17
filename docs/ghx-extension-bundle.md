@@ -13,6 +13,28 @@ This file is the human-reviewed catalog for extensions that `ghx` should bundle,
 - `ghx ext bundle audit`
 - `ghx ext wrap <extension>`
 
+## Companion tool compatibility
+
+`ghx` should treat Unix-style companion tools as a first-class compatibility surface before it tries to manage installs. The core rule is that every automation-oriented command should have stable JSON fields, predictable stdout/stderr, and pipe-friendly behavior so agents and humans can compose it with existing tools.
+
+Initial companion set:
+
+- `jq`: JSON filtering and scripted assertions. `ghx` already embeds `--jq`, but command JSON contracts must stay stable.
+- `rg`: fast source, docs, logs, and downloaded artifact search. Prefer examples that compose `ghx ... --json` with `rg` only when text search is actually the right primitive.
+- `fzf`: human selection over issues, PRs, runs, checks, and generated operation ids.
+- `delta`: readable diffs for PR patches, generated code reviews, and ruleset/config diffs.
+- `gum`: optional interactive prompts for local scripts, never required for noninteractive command paths.
+- `yq`: YAML workflows, Actions manifests, and repo config inspection.
+
+Future native surface:
+
+- `ghx tools doctor`: show missing companion tools, detected versions, PATH source, and project requirements.
+- `ghx tools install <name>`: install a curated companion without shadowing existing tools silently.
+- `ghx tools path`: print the resolved binary path for each companion tool.
+- `.ghx/tools.toml`: optional project-pinned companion requirements, separate from account binding.
+
+Do not hard-bundle or shadow user tools by default. The safe path is discovery and opt-in installation, with clear output about what will be used.
+
 ## Initial catalog
 
 | Extension | Owner | Posture | Notes |

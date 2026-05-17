@@ -96,6 +96,20 @@ func TestNewCmdCreate(t *testing.T) {
 			},
 		},
 		{
+			name:     "parent issue",
+			tty:      false,
+			cli:      `-t child -b body --parent 123`,
+			wantsErr: false,
+			wantsOpts: CreateOptions{
+				Title:       "child",
+				Body:        "body",
+				Parent:      "123",
+				RecoverFile: "",
+				WebMode:     false,
+				Interactive: false,
+			},
+		},
+		{
 			name:     "template from name tty",
 			tty:      true,
 			cli:      `-t mytitle --template "bug report"`,
@@ -247,6 +261,7 @@ func TestNewCmdCreate(t *testing.T) {
 			assert.Equal(t, tt.wantsOpts.WebMode, opts.WebMode)
 			assert.Equal(t, tt.wantsOpts.Interactive, opts.Interactive)
 			assert.Equal(t, tt.wantsOpts.Template, opts.Template)
+			assert.Equal(t, tt.wantsOpts.Parent, opts.Parent)
 		})
 	}
 }
@@ -752,6 +767,44 @@ func TestIssueCreate(t *testing.T) {
 		t.Errorf("error running command `issue create`: %v", err)
 	}
 
+	assert.Equal(t, "https://github.com/OWNER/REPO/issues/12\n", output.String())
+}
+
+func TestIssueCreate_parent(t *testing.T) {
+	http := &httpmock.Registry{}
+	defer http.Verify(t)
+
+	http.Register(
+		httpmock.GraphQL(`query IssueRepositoryInfo\b`),
+		httpmock.StringResponse(`
+			{ "data": { "repository": {
+				"id": "REPOID",
+				"hasIssuesEnabled": true
+			} } }`),
+	)
+	http.Register(
+		httpmock.GraphQL(`query IssueByNumber\b`),
+		httpmock.StringResponse(`{"data":{"repository":{
+			"hasIssuesEnabled": true,
+			"issue":{"__typename":"Issue","id":"PARENTID","number":1,"title":"parent"}
+		}}}`),
+	)
+	http.Register(
+		httpmock.GraphQL(`mutation IssueCreate\b`),
+		httpmock.GraphQLMutation(`
+				{ "data": { "createIssue": { "issue": {
+					"URL": "https://github.com/OWNER/REPO/issues/12"
+				} } } }`,
+			func(inputs map[string]interface{}) {
+				assert.Equal(t, "REPOID", inputs["repositoryId"])
+				assert.Equal(t, "child", inputs["title"])
+				assert.Equal(t, "body", inputs["body"])
+				assert.Equal(t, "PARENTID", inputs["parentIssueId"])
+			}),
+	)
+
+	output, err := runCommand(http, true, `-t child -b body --parent 1`, nil)
+	require.NoError(t, err)
 	assert.Equal(t, "https://github.com/OWNER/REPO/issues/12\n", output.String())
 }
 

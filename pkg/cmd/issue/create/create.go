@@ -14,6 +14,7 @@ import (
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/prompter"
 	"github.com/cli/cli/v2/internal/text"
+	issueShared "github.com/cli/cli/v2/pkg/cmd/issue/shared"
 	prShared "github.com/cli/cli/v2/pkg/cmd/pr/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -47,6 +48,7 @@ type CreateOptions struct {
 	Projects  []string
 	Milestone string
 	Template  string
+	Parent    string
 }
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
@@ -83,6 +85,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			$ gh issue create --assignee "@me"
 			$ gh issue create --assignee "@copilot"
 			$ gh issue create --project "Roadmap"
+			$ gh issue create --parent 123 --title "Child work" --body "Details"
 			$ gh issue create --template "Bug Report"
 		`),
 		Args:    cmdutil.NoArgsQuoteReminder,
@@ -139,6 +142,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	cmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", nil, "Add labels by `name`")
 	cmd.Flags().StringSliceVarP(&opts.Projects, "project", "p", nil, "Add the issue to projects by `title`")
 	cmd.Flags().StringVarP(&opts.Milestone, "milestone", "m", "", "Add the issue to a milestone by `name`")
+	cmd.Flags().StringVar(&opts.Parent, "parent", "", "Create the issue as a subissue of another issue by number or URL")
 	cmd.Flags().StringVar(&opts.RecoverFile, "recover", "", "Recover input from a failed run of create")
 	cmd.Flags().StringVarP(&opts.Template, "template", "T", "", "Template `name` to use as starting body text")
 
@@ -372,6 +376,14 @@ func createRun(opts *CreateOptions) (err error) {
 		if err != nil {
 			return
 		}
+		if opts.Parent != "" {
+			parentID, parentErr := resolveParentIssueID(httpClient, baseRepo, opts.Parent)
+			if parentErr != nil {
+				err = parentErr
+				return
+			}
+			params["parentIssueId"] = parentID
+		}
 
 		var newIssue *api.Issue
 		newIssue, err = api.IssueCreate(apiClient, repo, params)
@@ -390,4 +402,26 @@ func createRun(opts *CreateOptions) (err error) {
 func generatePreviewURL(apiClient *api.Client, baseRepo ghrepo.Interface, tb prShared.IssueMetadataState, projectsV1Support gh.ProjectsV1Support) (string, error) {
 	openURL := ghrepo.GenerateRepoURL(baseRepo, "issues/new")
 	return prShared.WithPrAndIssueQueryParams(apiClient, baseRepo, openURL, tb, projectsV1Support)
+}
+
+func resolveParentIssueID(httpClient *http.Client, baseRepo ghrepo.Interface, parent string) (string, error) {
+	parentNumber, parentRepo, err := issueShared.ParseIssueFromArg(parent)
+	if err != nil {
+		return "", fmt.Errorf("invalid value for `--parent`: %w", err)
+	}
+	repo := baseRepo
+	if parsedRepo, present := parentRepo.Value(); present {
+		if !ghrepo.IsSame(baseRepo, parsedRepo) {
+			return "", fmt.Errorf("`--parent` must reference an issue in %s", ghrepo.FullName(baseRepo))
+		}
+		repo = parsedRepo
+	}
+	issue, err := issueShared.FindIssueOrPR(httpClient, repo, parentNumber, []string{"id", "number", "title"})
+	if err != nil {
+		return "", err
+	}
+	if issue.IsPullRequest() {
+		return "", fmt.Errorf("`--parent` must reference an issue, not a pull request")
+	}
+	return issue.ID, nil
 }

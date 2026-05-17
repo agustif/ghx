@@ -287,7 +287,7 @@ func IssueCreate(client *Client, repo *Repository, params map[string]interface{}
 	}
 	for key, val := range params {
 		switch key {
-		case "assigneeIds", "body", "issueTemplate", "labelIds", "milestoneId", "projectIds", "repositoryId", "title":
+		case "assigneeIds", "body", "issueTemplate", "labelIds", "milestoneId", "parentIssueId", "projectIds", "repositoryId", "title":
 			inputParams[key] = val
 		case "projectV2Ids", "assigneeLogins":
 			// handled after issue creation

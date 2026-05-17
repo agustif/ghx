@@ -8,6 +8,25 @@ Related docs: [Gap map](../ghx-gap-map.md), [Generated API proxies](generated-ap
 
 Ship useful `ghx` workflows in small read-only slices before adding mutating commands.
 
+## PM sequencing
+
+First principles:
+
+- users and agents need to know identity and target before they need more mutation power
+- diagnostics should collapse GitHub's scattered pages into one terminal answer with exact blockers and next commands
+- every new surface should be scriptable by default through stable JSON
+- raw API escape hatches and generated metadata should keep the product current while native workflows mature
+- issue trees should hold the roadmap so each idea becomes an executable, reviewable unit of work
+
+Next after first-class subissues:
+
+1. Convert the existing `ghx` roadmap into parent issues and acceptance-sized subissues.
+2. Ship `ghx ctx explain --json` as the identity and intent primitive.
+3. Use generated API metadata for `ghx api explain <operation-id>`.
+4. Build read-only `ghx pr ready` on top of `ctx`, review threads, checks, rulesets, and merge queue state.
+5. Build `ghx ci doctor` with Actions run/job/log triage and pending deployment visibility.
+6. Add opt-in companion tooling discovery through `ghx tools doctor` before managed installation.
+
 ## Slice 1: `ghx ctx`
 
 Purpose: prove account and repo intent before other workflows depend on it.

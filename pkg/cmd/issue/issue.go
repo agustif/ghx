@@ -13,6 +13,7 @@ import (
 	cmdPin "github.com/cli/cli/v2/pkg/cmd/issue/pin"
 	cmdReopen "github.com/cli/cli/v2/pkg/cmd/issue/reopen"
 	cmdStatus "github.com/cli/cli/v2/pkg/cmd/issue/status"
+	cmdSubIssue "github.com/cli/cli/v2/pkg/cmd/issue/subissue"
 	cmdTransfer "github.com/cli/cli/v2/pkg/cmd/issue/transfer"
 	cmdUnpin "github.com/cli/cli/v2/pkg/cmd/issue/unpin"
 	cmdView "github.com/cli/cli/v2/pkg/cmd/issue/view"
@@ -46,6 +47,7 @@ func NewCmdIssue(f *cmdutil.Factory) *cobra.Command {
 		cmdList.NewCmdList(f, nil),
 		cmdCreate.NewCmdCreate(f, nil),
 		cmdStatus.NewCmdStatus(f, nil),
+		cmdSubIssue.NewCmdSubIssue(f),
 	)
 
 	cmdutil.AddGroup(cmd, "Targeted commands",

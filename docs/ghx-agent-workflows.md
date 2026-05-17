@@ -54,6 +54,28 @@ Agent-facing commands should support:
 - `--explain`
 - `--dry-run` for mutation
 
+## Issue trees
+
+Use native subissues for roadmaps, task decomposition, and multi-agent work queues.
+
+Supported commands:
+
+```sh
+ghx issue create --parent <issue-number-or-url> --title "Child task" --body "Details"
+ghx issue subissue list <issue-number-or-url> --json number,title,state,url,repository
+ghx issue subissue add <parent-number-or-url> <child-number-or-url>
+ghx issue subissue remove <parent-number-or-url> <child-number-or-url>
+ghx issue subissue reprioritize <parent-number-or-url> <child-number-or-url> --before <sibling-number-or-url>
+ghx issue subissue reprioritize <parent-number-or-url> <child-number-or-url> --after <sibling-number-or-url>
+```
+
+Agent rules:
+
+- prefer `--json number,title,state,url,repository` for machine-readable tree reads
+- keep parent and child mutations in the intended repo unless a URL explicitly names another repo
+- record broad ideas as roadmap issues or subissues before leaving them in chat-only form
+- use subissues for acceptance-sized work, not only large epics
+
 ## Screenshot and proof artifacts
 
 Use `gh attach` for visual evidence when a PR or issue needs screenshot-backed proof.

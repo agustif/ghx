@@ -17,6 +17,7 @@ Architecture Decision Records in this directory capture fork-level choices that 
 | [0005](0005-extension-bundles-and-wrappers.md) | Accepted | Pre-bundle and wrap proven extensions before rebuilding their behavior in-tree. |
 | [0006](0006-agent-progress-contract.md) | Accepted | Use a shared progress contract with 0/100 reporting, task trees, and machine-readable logs. |
 | [0007](0007-ghx-config-directory.md) | Accepted | Support layered `.ghx/` config files for project-local profiles, extension bundles, workflows, and trusted hooks. |
+| [0008](0008-product-discovery-record-system.md) | Accepted | Use research notes, RFCs, ADRs, and subissues as the durable product discovery record system. |
 
 ## ADR template
 
