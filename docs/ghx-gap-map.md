@@ -46,8 +46,183 @@ The CLI has breadth. The gap is that it mostly exposes individual nouns, while r
 | Org access and governance | `org list`; repo/team details mostly missing | Org roles, teams, members, outside collaborators, fine-grained PAT inventory | `thin` | `ghx org access why`, `ghx org tokens`, `ghx org apps`, `ghx org audit tail` |
 | Agent workflows | `agent-task` exists, but no general progress/control-plane contract | GitHub agent-task API, issues/PRs/actions/projects | `partial` | `ghx agent handoff`, `ghx agent progress`, `--progress-log` on long-running commands |
 | API ergonomics | `api` is powerful but low-level | REST and GraphQL OpenAPI/schema | `good but raw` | `ghx api discover`, generated typed helpers, endpoint permission hints, examples from live auth scope |
+| Official surface mining | Manual docs/API review only | `github/rest-api-description`, public GraphQL schema, `github/docs`, GitHub changelog | `none` | `ghx mine github` generates gap reports and candidate command specs from official sources |
+| Workflow automation | `workflow`, `run`, and `agent-task` are primitives | `github/gh-aw`, Actions, issues, PRs, safe outputs, approval gates | `partial` | Adopt `gh aw` as a first-class companion for durable repo workflows, not as a replacement for interactive `ghx` |
+| Extension ecosystem | `extension install/search/list/upgrade` exists | `gh-extension` topic and installed extensions | `thin` | `ghx ext bundle`, curated extension manifests, provenance checks, account-aware wrappers |
 
 ## Highest-value additions
+
+### 0. Generated validated API proxies
+
+Goal: make GitHub's REST and GraphQL surface usable without hand-writing fragile `ghx api` calls, while preserving raw escape hatches for new or unusual endpoints.
+
+This should be an internal substrate for the rest of the roadmap, not a replacement for `ghx api`.
+
+Commands and packages:
+
+- `internal/ghapi/restgen`: generator driver for REST OpenAPI input.
+- `internal/ghapi/rest`: generated typed REST operations, request structs, response structs, enums, pagination helpers, and endpoint metadata.
+- `internal/ghapi/graphqlgen`: generator driver for GraphQL schema and curated operation files.
+- `internal/ghapi/graphql`: generated GraphQL variable/input/output structs for curated operations.
+- `ghx api discover <keyword>`: endpoint discovery over generated metadata.
+- `ghx api explain <operation-id>`: method, path, required params, scopes/permissions when known, previews, response type, pagination style.
+
+REST source:
+
+- Use GitHub's public `github/rest-api-description` OpenAPI descriptions as the canonical REST input.
+- Vendor a pinned bundled spec snapshot under `internal/ghapi/specs/rest/`.
+- Keep the API version explicit. The current client hardcodes `X-GitHub-Api-Version: 2022-11-28`; generated clients should make this configurable while defaulting to the repo's chosen supported version.
+- Generate per-operation metadata from `operationId`, method, path, parameters, request body schema, response schemas, pagination shape, and vendor extensions where present.
+
+GraphQL source:
+
+- Use the public GraphQL schema or schema introspection output as the canonical type input.
+- Do not try to generate every possible GraphQL query as a command. GraphQL is a typed graph, not an endpoint list.
+- Generate schema types and validate curated `.graphql` operation files for the workflows we own, such as PR readiness, review threads, merge queue, projects, rulesets, and inbox.
+- Keep the current raw `Client.GraphQL` path as the fallback for exploratory queries.
+
+Generator options:
+
+- `oapi-codegen` is a pragmatic first candidate for Go because it generates clients/types from OpenAPI 3 and allows custom templates.
+- `ogen` is worth a spike because it advertises generated validation, no reflection, typed request structures, and stronger OpenAPI-driven request parsing.
+- ReadMe-style SDK generation is useful as a product reference: ReadMe treats OpenAPI as a source for docs, request builders, code examples, and SDK-generated code. That is the same direction we want for CLI help and examples.
+- Speakeasy, Fern, Stainless, Kiota, and OpenAPI Generator are worth comparing, but the first shipping slice should avoid adding a paid/cloud generator to the normal build unless it clearly outperforms Go-native generation.
+
+Proxy design:
+
+```go
+type RequestOptions struct {
+	Headers    map[string]string
+	Query      map[string][]string
+	RawBody    io.Reader
+	APIVersion string
+	Preview    []string
+	Unchecked  bool
+}
+
+type Operation[TParams any, TResponse any] interface {
+	ID() string
+	Method() string
+	Path(params TParams) (string, error)
+	Validate(params TParams) error
+	Do(ctx context.Context, client *api.Client, params TParams, opts ...RequestOption) (TResponse, error)
+}
+```
+
+Validation rules:
+
+- Required path/query/body params are checked before the request.
+- Enums become typed constants.
+- Date, URI, integer, boolean, and array shapes are parsed before dispatch.
+- Mutually exclusive query params and one-of request bodies should be enforced where the spec is precise enough.
+- Unknown fields are rejected by default in generated calls.
+- Pagination helpers should expose `AllPages`, `EachPage`, and `FirstPage`.
+
+Escape hatches:
+
+- `RequestOptions.Unchecked`: skip generated param validation but still use auth, host, telemetry, cache, and error handling.
+- `RequestOptions.Headers` and `Preview`: opt into custom media types, previews, and new API headers.
+- `RequestOptions.Query`: add unknown query params for newly shipped API filters.
+- `RequestOptions.RawBody`: send raw JSON or stream bodies when the spec lags.
+- `ghx api` remains the fully raw CLI path for REST and GraphQL.
+- Generated operations should expose `RawPath(params)` and `OperationID` so a user can drop to `ghx api` with the exact endpoint.
+
+Command integration:
+
+- First use generated proxies behind new `ghx` surfaces, not by rewriting all old commands.
+- Good first targets are `ghx pr ready`, `ghx ci doctor`, `ghx rules explain`, and `ghx sec inbox`.
+- Existing handwritten `api/queries_*.go` remains valid until a command is touched.
+- Generated code lives behind small adapter interfaces so command tests can mock operations without depending on huge generated structs.
+
+CI and drift control:
+
+- Pin the upstream OpenAPI and GraphQL schema snapshot.
+- `go generate ./internal/ghapi/...` regenerates all proxy code.
+- CI checks generated code is clean.
+- A scheduled workflow opens a PR when specs change.
+- A generated `docs/ghx-api-coverage.md` reports which operations have high-level CLI commands, which only have generated proxies, and which remain raw-only.
+
+First implementation slice:
+
+1. Vendor one small REST spec subset for Actions workflow runs, workflow jobs, and pending deployments.
+2. Generate metadata plus typed request structs, not the full GitHub API.
+3. Build `ghx api explain <operation-id>`.
+4. Build `internal/ghapi/rest/workflow_runs` wrappers used by a read-only `ghx ci doctor` prototype.
+5. Add `--unchecked` and `--raw-field` escape hatches to the prototype command.
+6. Expand once the generated code shape is proven reviewable.
+
+### 0.1 Official GitHub surface mining
+
+Goal: keep the roadmap fed from the full depth of GitHub's official docs, public schemas, and maintained repos instead of only from the current `gh` command tree.
+
+Inputs to mine:
+
+- `github/rest-api-description`: operation ids, categories, parameters, response schemas, pagination, previews, and vendor extensions.
+- GitHub GraphQL public schema: objects, mutations, deprecations, connections, and query cost surfaces.
+- `github/docs`: REST and GraphQL article structure, product terminology, permission notes, examples, deprecation notes, and "in this article" navigation.
+- GitHub changelog and release notes: newly shipped endpoints, deprecations, preview exits, and product feature flags.
+- Official GitHub extension repos such as `github/gh-aw`, `github/gh-stack`, `github/gh-actions-importer`, `github/gh-gei`, `github/gh-copilot`, and `github/gh-models`.
+
+Proposed commands:
+
+- `ghx mine github --source rest --format md`: compare official REST operations against first-class `ghx` commands and generated proxies.
+- `ghx mine github --source graphql --operation-dir internal/ghapi/graphql/operations`: validate curated GraphQL operations against the latest public schema.
+- `ghx mine github --source docs --area actions`: scan docs navigation for product surfaces that have no local command group.
+- `ghx mine github --source extensions --topic gh-extension`: score extension candidates by owner, update recency, license, stars, install shape, and overlap with our roadmap.
+
+Output artifacts:
+
+- `docs/ghx-api-coverage.md`: operation-level coverage.
+- `docs/ghx-official-surface-report.md`: docs/product areas with no usable terminal surface.
+- `docs/ghx-extension-bundle.md`: extension adoption candidates and wrapper decisions.
+- `internal/ghapi/specs/manifest.json`: pinned spec/schema versions and checksums.
+
+This mining should be automated as a scheduled workflow and as a local command. It should never make a feature decision by itself; it should produce evidence, proposed slices, and exact source links.
+
+### 0.2 Workflow and extension adoption
+
+Goal: use proven GitHub CLI extensions and workflow tools before rebuilding a whole product area in-tree.
+
+`gh aw` decision:
+
+- Adopt `github/gh-aw` as a first-class companion for durable repo workflows.
+- Do not replace `ghx` with `gh aw`. `ghx` remains the interactive local control plane for identity, account binding, typed API access, diagnostics, and human-in-the-loop commands.
+- Use `gh aw` when the task should live in the repo and run through GitHub Actions with guardrails, approval gates, safe outputs, and audit history.
+- Use `ghx` when the task needs local repo/account context, immediate terminal feedback, cross-repo diagnosis, or generated REST/GraphQL calls.
+
+Adoption commands:
+
+- `ghx workflows init`: bootstrap our preferred `gh aw` workflow templates into a repo.
+- `ghx workflows doctor`: validate workflow files, permissions, safe-output usage, and pinned dependencies.
+- `ghx workflows run <name>`: call through to `gh aw` or `gh workflow run` with scoped-account confirmation.
+- `ghx workflows watch`: combine `gh aw` run state, Actions logs, progress log output, and PR/issue links.
+
+Extension bundle model:
+
+- `ghx ext bundle list`: show curated extension bundles.
+- `ghx ext bundle install agent`: install pinned extensions used by our agent workflows.
+- `ghx ext bundle audit`: report unpinned, stale, unsigned, archived, or scope-sensitive extensions.
+- `ghx ext wrap <extension>`: expose an account-aware wrapper that injects `.ghaccount`/`GH_ACCOUNT_SESSION` context and consistent JSON/progress behavior when possible.
+
+Initial bundle candidates:
+
+| Extension | Owner | Adopt posture | Why |
+| --- | --- | --- | --- |
+| `gh aw` | `github/gh-aw` | first-class companion | Agentic workflows in repo-owned Actions with guardrails and approval gates. |
+| `gh stack` | `github/gh-stack` | first-class companion | Official stacked PR workflow; do not reinvent stack mechanics unless ghx needs account-aware wrappers. |
+| `gh attach` | `enthus-appdev/gh-attach` | wrap and watch | Already installed locally; uploads images to GitHub PRs/issues while preserving repo visibility, useful for screenshots and visual QA evidence. |
+| `gh dash` | `dlvhdr/gh-dash` | optional bundle | Mature terminal dashboard; useful as an interactive review/status UI while ghx owns machine-readable diagnostics. |
+| `gh pr-review` | `agynio/gh-pr-review` | spike | Direct overlap with `ghx pr threads`; mine behavior before building our own unresolved-thread UI. |
+| `gh actions-cache` | `actions/gh-actions-cache` | wrap or supersede | Existing Actions cache management; ghx can add org/repo storage diagnosis and account safety around it. |
+| `gh actions-importer` | `github/gh-actions-importer` | optional bundle | Official migration workflow; useful for repos moving into GitHub Actions. |
+
+Bundle rules:
+
+- Prefer install-by-pin over "latest" for anything agents call automatically.
+- Prefer official GitHub-owned extensions for mutating workflows when feature coverage is close.
+- Keep third-party extensions behind wrappers until license, maintenance, and behavior are reviewed.
+- Never hide extension provenance. `ghx ext bundle list --json` should show owner, repo, version, pin, license, update age, and command mapping.
+- Do not fork an extension unless we need `.ghaccount` awareness, stable JSON, noninteractive mode, progress logging, or security changes that upstream will not take.
 
 ### 1. `ghx ctx`
 
@@ -205,14 +380,15 @@ This should connect deployments, environment URLs, logs, workflow pending deploy
 
 The lowest-risk order is:
 
-1. `ghx ctx`: mostly local config plus existing auth APIs. It makes every later command safer.
-2. `ghx pr ready --json`: read-only GraphQL/REST aggregation. High daily value.
-3. `ghx pr threads`: focused read-only GraphQL surface that feeds `pr ready`.
-4. `ghx ci doctor`: read-only REST aggregation over runs/jobs/logs.
-5. `ghx rules explain`: mostly read-only REST/GraphQL rulesets.
-6. `ghx deploy status` and `ghx env pending`: read-only deployment/environment gates.
-7. `ghx sec inbox`: read-only security alert aggregation.
-8. Mutating variants: approvals, deployment statuses, alert dismissal, ruleset import, cache/artifact pruning.
+1. Generated validated API proxy spike: small Actions REST subset plus `ghx api explain`.
+2. `ghx ctx`: mostly local config plus existing auth APIs. It makes every later command safer.
+3. `ghx pr ready --json`: read-only GraphQL/REST aggregation. High daily value.
+4. `ghx pr threads`: focused read-only GraphQL surface that feeds `pr ready`.
+5. `ghx ci doctor`: read-only REST aggregation over runs/jobs/logs.
+6. `ghx rules explain`: mostly read-only REST/GraphQL rulesets.
+7. `ghx deploy status` and `ghx env pending`: read-only deployment/environment gates.
+8. `ghx sec inbox`: read-only security alert aggregation.
+9. Mutating variants: approvals, deployment statuses, alert dismissal, ruleset import, cache/artifact pruning.
 
 ## Design rules for ghx-only surfaces
 
@@ -239,3 +415,16 @@ The lowest-risk order is:
 - GitHub hosted runners REST API: https://docs.github.com/en/rest/actions/hosted-runners
 - GitHub organization fine-grained PAT REST API: https://docs.github.com/en/rest/orgs/personal-access-tokens
 - GitHub GraphQL object schema: https://docs.github.com/en/graphql/reference/objects
+- GitHub REST OpenAPI description: https://github.com/github/rest-api-description
+- GitHub GraphQL public schema: https://docs.github.com/en/graphql/overview/public-schema
+- GitHub REST API versioning: https://docs.github.com/en/rest/about-the-rest-api/api-versions
+- ReadMe OpenAPI support and SDK-generated code: https://docs.readme.com/main/docs/openapi
+- oapi-codegen Go OpenAPI generator: https://github.com/oapi-codegen/oapi-codegen
+- ogen Go OpenAPI generator: https://github.com/ogen-go/ogen
+- GitHub Docs repo: https://github.com/github/docs
+- GitHub changelog: https://github.blog/changelog
+- GitHub CLI extension install docs: https://cli.github.com/manual/gh_extension_install
+- GitHub CLI extension topic: https://github.com/topics/gh-extension
+- GitHub Agentic Workflows: https://github.com/github/gh-aw
+- GitHub Stacked PRs extension: https://github.com/github/gh-stack
+- gh attach extension: https://github.com/enthus-appdev/gh-attach
