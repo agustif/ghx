@@ -290,6 +290,35 @@ Migration decision:
 - Every workflow is classified as unchanged upstream behavior, fork-compatible, fork-disabled, or needing a `ghx` replacement.
 - Divergence docs are required when shipped behavior changes relative to upstream `gh`.
 - Current classification source: [ghx workflow automation audit](ghx-workflow-automation-audit.md). The high-risk automation is release publication, Homebrew publication, Go bump PR creation, spam detection, and discussion routing.
+- Current upstream sync policy source: [ghx upstream sync and support audit](ghx-upstream-sync-support-audit.md).
+
+### Telemetry, support, and product identity
+
+Owned by [#71](https://github.com/agustif/ghx/issues/71).
+
+Primary files:
+
+- `internal/telemetry`
+- `pkg/cmd/send-telemetry`
+- `pkg/cmd/root/help_topic.go`
+- `.github/ISSUE_TEMPLATE`
+- `.github/SECURITY.md`
+- `.github/CONTRIBUTING.md`
+- update and version identity code
+
+Known upstream assumptions:
+
+- command telemetry is sent to GitHub CLI owned telemetry services
+- telemetry help points at the upstream GitHub CLI telemetry page
+- support, security, and contribution links route users to upstream `cli/cli`
+- bug templates ask reporters for `gh version`
+
+Migration decision:
+
+- Fork-specific `ghx` behavior needs fork-owned support routing before production release.
+- Production `ghx` must either disable command telemetry by default or use a fork-owned endpoint, app identity, user agent, privacy page, support owner, and retention policy.
+- Update checks and version links are already fork-owned for `ghx` builds and remain upstream-compatible for `gh` builds.
+- Current classification source: [ghx upstream sync and support audit](ghx-upstream-sync-support-audit.md).
 
 ### Side-by-side account and git behavior
 
@@ -353,3 +382,4 @@ Runbook links:
 - [ ] Every release-facing PR links the owning issue slice.
 - [ ] `docs/ghx-vs-gh.md` is updated whenever a migration changes shipped behavior relative to upstream `gh`.
 - [ ] No release automation publishes to upstream-owned repos, package registries, docs sites, or formulas without an explicit fork decision.
+- [ ] Production `ghx` release publication stays blocked until telemetry and support routing are explicitly fork-owned or disabled.
