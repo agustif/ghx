@@ -73,6 +73,10 @@ test:
 acceptance:
 	go test -tags acceptance ./acceptance
 
+.PHONY: smoke-ghx-release
+smoke-ghx-release:
+	./script/smoke-ghx-release
+
 ## Site-related tasks are exclusively intended for use by the GitHub CLI team and for our release automation.
 
 site:

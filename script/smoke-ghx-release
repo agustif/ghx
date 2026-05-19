@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT_DIR"
+
+BIN="bin/ghx"
+VERSION="${GHX_SMOKE_VERSION:-v0.0.0-smoke}"
+SOURCE_EPOCH="${GHX_SMOKE_SOURCE_DATE_EPOCH:-1704067200}"
+CONFIG_DIR="$(mktemp -d)"
+
+cleanup() {
+	rm -rf "$CONFIG_DIR"
+}
+trap cleanup EXIT
+
+mkdir -p "$(dirname "$BIN")"
+rm -f "$BIN"
+
+GH_VERSION="$VERSION" SOURCE_DATE_EPOCH="$SOURCE_EPOCH" make "$BIN"
+
+if [[ ! -x "$BIN" ]]; then
+	echo "expected executable $BIN" >&2
+	exit 1
+fi
+
+version_output="$(GH_CONFIG_DIR="$CONFIG_DIR" "$BIN" --version)"
+version_first_line="$(printf '%s\n' "$version_output" | sed -n '1p')"
+expected_prefix="ghx version ${VERSION#v} ("
+
+if [[ "$version_first_line" != "$expected_prefix"* ]]; then
+	echo "expected version line to start with: $expected_prefix" >&2
+	echo "actual: $version_first_line" >&2
+	exit 1
+fi
+
+if [[ "$version_first_line" == gh\ version* ]]; then
+	echo "expected ghx identity, got upstream gh identity: $version_first_line" >&2
+	exit 1
+fi
+
+help_output="$(GH_CONFIG_DIR="$CONFIG_DIR" "$BIN" --help)"
+if ! grep -Fq "  ghx <command> <subcommand> [flags]" <<<"$help_output"; then
+	echo "expected root help to use ghx command identity" >&2
+	exit 1
+fi
+
+if ! grep -Fq "Show ghx version" <<<"$help_output"; then
+	echo "expected root help to describe the ghx version flag" >&2
+	exit 1
+fi
+
+printf 'ghx source smoke passed: %s\n' "$version_first_line"
