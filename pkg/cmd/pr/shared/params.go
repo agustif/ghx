@@ -169,19 +169,20 @@ func AddMetadataToIssueParams(client *api.Client, baseRepo ghrepo.Interface, par
 }
 
 type FilterOptions struct {
-	Assignee   string
-	Author     string
-	BaseBranch string
-	Draft      *bool
-	Entity     string
-	Fields     []string
-	HeadBranch string
-	Labels     []string
-	Mention    string
-	Milestone  string
-	Repo       string
-	Search     string
-	State      string
+	Assignee     string
+	Author       string
+	BaseBranch   string
+	Draft        *bool
+	Entity       string
+	Fields       []string
+	HeadBranch   string
+	Labels       []string
+	Mention      string
+	Milestone    string
+	Repo         string
+	Search       string
+	SearchFields []string
+	State        string
 }
 
 func (opts *FilterOptions) IsDefault() bool {
@@ -247,6 +248,7 @@ func SearchQueryBuild(options FilterOptions, advancedIssueSearchSyntax bool) str
 			Mentions:  options.Mention,
 			Milestone: options.Milestone,
 			Repo:      []string{options.Repo},
+			In:        options.SearchFields,
 			State:     state,
 			Is:        []string{is},
 			Type:      options.Entity,

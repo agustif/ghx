@@ -37,6 +37,7 @@ type ListOptions struct {
 	Mention      string
 	Milestone    string
 	Search       string
+	SearchFields []string
 	WebMode      bool
 	Exporter     cmdutil.Exporter
 
@@ -76,6 +77,7 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 			$ gh issue list --assignee "@me"
 			$ gh issue list --milestone "The big 1.0"
 			$ gh issue list --search "error no:assignee sort:created-asc"
+			$ gh issue list --search "error" --match body,comments
 			$ gh issue list --state all
 		`),
 		Aliases: []string{"ls"},
@@ -96,6 +98,10 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 				opts.Author = fmt.Sprintf("app/%s", appAuthor)
 			}
 
+			if cmd.Flags().Changed("match") && opts.Search == "" {
+				return cmdutil.FlagErrorf("specify `--search` when using `--match`")
+			}
+
 			if runF != nil {
 				return runF(opts)
 			}
@@ -113,6 +119,7 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 	cmd.Flags().StringVar(&opts.Mention, "mention", "", "Filter by mention")
 	cmd.Flags().StringVarP(&opts.Milestone, "milestone", "m", "", "Filter by milestone number or title")
 	cmd.Flags().StringVarP(&opts.Search, "search", "S", "", "Search issues with `query`")
+	cmdutil.StringSliceEnumFlag(cmd, &opts.SearchFields, "match", "", nil, []string{"title", "body", "comments"}, "Restrict search to specific field of issue")
 	cmdutil.AddJSONFlags(cmd, &opts.Exporter, api.IssueFields)
 
 	return cmd
@@ -150,15 +157,16 @@ func listRun(opts *ListOptions) error {
 	fields := append(defaultFields, "stateReason")
 
 	filterOptions := prShared.FilterOptions{
-		Entity:    "issue",
-		State:     issueState,
-		Assignee:  opts.Assignee,
-		Labels:    opts.Labels,
-		Author:    opts.Author,
-		Mention:   opts.Mention,
-		Milestone: opts.Milestone,
-		Search:    opts.Search,
-		Fields:    fields,
+		Entity:       "issue",
+		State:        issueState,
+		Assignee:     opts.Assignee,
+		Labels:       opts.Labels,
+		Author:       opts.Author,
+		Mention:      opts.Mention,
+		Milestone:    opts.Milestone,
+		Search:       opts.Search,
+		SearchFields: opts.SearchFields,
+		Fields:       fields,
 	}
 
 	isTerminal := opts.IO.IsStdoutTTY()

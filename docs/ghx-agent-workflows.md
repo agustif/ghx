@@ -54,6 +54,24 @@ Agent-facing commands should support:
 - `--explain`
 - `--dry-run` for mutation
 
+## Issue search
+
+Use repo-scoped issue search when the current working tree is the source of truth, and use global search when the task spans owners or repositories.
+
+Preferred patterns:
+
+```sh
+ghx issue list --search "startup timeout" --match title,body,comments --json number,title,url,updatedAt
+ghx issue list --search "flaky runner" --match comments --state all
+ghx search issues "flaky runner" --owner FlatFilers --match title,body,comments --json number,title,repository,url
+```
+
+Rules:
+
+- use `ghx issue list --search ... --match ...` for current-repo text searches that need title, body, or comment scope
+- use `ghx search issues` for cross-repo inventory or owner-wide searches
+- prefer `--json number,title,url,updatedAt` before parsing table output
+
 ## Issue trees
 
 Use native subissues for roadmaps, task decomposition, and multi-agent work queues.

@@ -173,6 +173,33 @@ func Test_listURLWithQuery(t *testing.T) {
 			want:    "https://example.com/path?q=label%3A%22help+wanted%22+label%3Adocs+milestone%3A%22Codename+%5C%22What+Was+Missing%5C%22%22+state%3Aopen+type%3Apr",
 			wantErr: false,
 		},
+		{
+			name: "search fields",
+			args: args{
+				listURL: "https://example.com/path",
+				options: FilterOptions{
+					Entity:       "issue",
+					Search:       "error",
+					SearchFields: []string{"body", "comments"},
+				},
+			},
+			want:    "https://example.com/path?q=error+in%3Abody+in%3Acomments+type%3Aissue",
+			wantErr: false,
+		},
+		{
+			name: "search fields, advanced search",
+			args: args{
+				listURL: "https://example.com/path",
+				options: FilterOptions{
+					Entity:       "issue",
+					Search:       "error",
+					SearchFields: []string{"body", "comments"},
+				},
+				advancedIssueSearchSyntax: true,
+			},
+			want:    "https://example.com/path?q=%28+error+%29+%28in%3Abody+OR+in%3Acomments%29+type%3Aissue",
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
