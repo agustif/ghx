@@ -6,6 +6,7 @@ Roadmap epic: [#55](https://github.com/agustif/ghx/issues/55)
 Parent epic: [#2](https://github.com/agustif/ghx/issues/2)
 Expanded slice: [#5](https://github.com/agustif/ghx/issues/5)
 Related research: [0004](../research/0004-ghx-release-upstream-and-distribution.md)
+Related audit: [ghx workflow automation audit](ghx-workflow-automation-audit.md)
 Shipped behavior contract: [ghx vs gh](../ghx-vs-gh.md)
 
 ## Goal
@@ -115,6 +116,7 @@ Migration decision:
 
 - Create a fork-owned staging release path before production release publication.
 - Any workflow that mutates external repos must use fork-owned credentials and dry-run gates.
+- Current classification: `needs a ghx replacement`. See the [workflow automation audit](ghx-workflow-automation-audit.md#workflow-classifications) for exact `.github/workflows/deployment.yml` blockers.
 
 ### Runtime update and version identity
 
@@ -254,6 +256,7 @@ Migration decision:
 
 - Every workflow is classified as unchanged upstream behavior, fork-compatible, fork-disabled, or needing a `ghx` replacement.
 - Divergence docs are required when shipped behavior changes relative to upstream `gh`.
+- Current classification source: [ghx workflow automation audit](ghx-workflow-automation-audit.md). The high-risk automation is release publication, Homebrew publication, Go bump PR creation, spam detection, and discussion routing.
 
 ### Side-by-side account and git behavior
 
