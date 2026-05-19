@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/cli/cli/v2/internal/config"
 	"github.com/cli/cli/v2/internal/gh"
+	"github.com/cli/cli/v2/pkg/cmd/auth/shared/gitcredentials"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/google/shlex"
@@ -74,6 +76,59 @@ func TestNewCmdSetupGit(t *testing.T) {
 		})
 	}
 }
+
+func TestNewCmdSetupGitUsesExecutableName(t *testing.T) {
+	f := &cmdutil.Factory{
+		ExecutablePath: "/opt/homebrew/bin/ghx",
+	}
+
+	var gotCommandName string
+	var gotSelfExecutablePath string
+
+	cmd := NewCmdSetupGit(f, func(opts *SetupGitOptions) error {
+		gotCommandName = opts.CommandName
+		helperConfig, ok := opts.CredentialsHelperConfig.(*gitcredentials.HelperConfig)
+		require.True(t, ok)
+		gotSelfExecutablePath = helperConfig.SelfExecutablePath
+		return nil
+	})
+
+	cmd.SetArgs([]string{"--hostname", "github.com", "--force"})
+	cmd.SetIn(&bytes.Buffer{})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	// TODO cobra hack-around
+	cmd.Flags().BoolP("help", "x", false, "")
+
+	_, err := cmd.ExecuteC()
+	require.NoError(t, err)
+	require.Equal(t, "ghx", gotCommandName)
+	require.Equal(t, "/opt/homebrew/bin/ghx", gotSelfExecutablePath)
+}
+
+func TestNewCmdSetupGitHelpUsesExecutableName(t *testing.T) {
+	f := &cmdutil.Factory{
+		ExecutablePath: "/path/to/ghx",
+	}
+
+	cmd := NewCmdSetupGit(f, nil)
+	stdout := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--help"})
+	// TODO cobra hack-around
+	cmd.Flags().BoolP("help", "x", false, "")
+
+	_, err := cmd.ExecuteC()
+	require.NoError(t, err)
+
+	help := stdout.String()
+	require.Equal(t, "Setup git with ghx", cmd.Short)
+	require.Contains(t, help, "This command configures `git` to use ghx as a credential helper.")
+	require.Contains(t, help, "$ ghx auth setup-git")
+	require.False(t, strings.Contains(help, "$ gh auth setup-git"), help)
+}
+
 func Test_setupGitRun(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -102,6 +157,17 @@ func Test_setupGitRun(t *testing.T) {
 				login(t, cfg, "github.com", "test-user", "gho_ABCDEFG", "https", false)
 			},
 			expectedErr: errors.New("You are not logged into the GitHub host \"ghe.io\". Run gh auth login -h ghe.io to authenticate or provide `--force`"),
+		},
+		{
+			name: "when an unknown hostname is provided without forcing, use the configured command name",
+			opts: &SetupGitOptions{
+				CommandName: "ghx",
+				Hostname:    "ghe.io",
+			},
+			cfgStubs: func(t *testing.T, cfg gh.Config) {
+				login(t, cfg, "github.com", "test-user", "gho_ABCDEFG", "https", false)
+			},
+			expectedErr: errors.New("You are not logged into the GitHub host \"ghe.io\". Run ghx auth login -h ghe.io to authenticate or provide `--force`"),
 		},
 		{
 			name: "when an unknown hostname is provided with forcing, set it up",
@@ -138,6 +204,14 @@ func Test_setupGitRun(t *testing.T) {
 			opts:           &SetupGitOptions{},
 			expectedErr:    cmdutil.SilentError,
 			expectedErrOut: "You are not logged into any GitHub hosts. Run gh auth login to authenticate.\n",
+		},
+		{
+			name: "when there are no known hosts and no hostname is provided, use the configured command name",
+			opts: &SetupGitOptions{
+				CommandName: "ghx",
+			},
+			expectedErr:    cmdutil.SilentError,
+			expectedErrOut: "You are not logged into any GitHub hosts. Run ghx auth login to authenticate.\n",
 		},
 		{
 			name: "when there are known hosts, and no hostname is provided, set them all up",

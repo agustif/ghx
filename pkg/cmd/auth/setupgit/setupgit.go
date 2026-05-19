@@ -2,6 +2,7 @@ package setupgit
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
@@ -19,6 +20,7 @@ type gitCredentialsConfigurer interface {
 type SetupGitOptions struct {
 	IO                      *iostreams.IOStreams
 	Config                  func() (gh.Config, error)
+	CommandName             string
 	Hostname                string
 	Force                   bool
 	CredentialsHelperConfig gitCredentialsConfigurer
@@ -29,28 +31,31 @@ func NewCmdSetupGit(f *cmdutil.Factory, runF func(*SetupGitOptions) error) *cobr
 		IO:     f.IOStreams,
 		Config: f.Config,
 	}
+	commandName := commandNameForExecutable(f.ExecutablePath)
+	commandDisplayName := displayNameForCommand(commandName)
+	opts.CommandName = commandName
 
 	cmd := &cobra.Command{
 		Use:   "setup-git",
-		Short: "Setup git with GitHub CLI",
+		Short: fmt.Sprintf("Setup git with %s", commandDisplayName),
 		Long: heredoc.Docf(`
-			This command configures %[1]sgit%[1]s to use GitHub CLI as a credential helper.
+			This command configures %[1]sgit%[1]s to use %[2]s as a credential helper.
 			For more information on git credential helpers please reference:
 			<https://git-scm.com/docs/gitcredentials>.
 
-			By default, GitHub CLI will be set as the credential helper for all authenticated hosts.
+			By default, %[2]s will be set as the credential helper for all authenticated hosts.
 			If there is no authenticated hosts the command fails with an error.
 
 			Alternatively, use the %[1]s--hostname%[1]s flag to specify a single host to be configured.
 			If the host is not authenticated with, the command fails with an error.
-		`, "`"),
-		Example: heredoc.Doc(`
-			# Configure git to use GitHub CLI as the credential helper for all authenticated hosts
-			$ gh auth setup-git
+		`, "`", commandDisplayName),
+		Example: heredoc.Docf(`
+			# Configure git to use %[1]s as the credential helper for all authenticated hosts
+			$ %[2]s auth setup-git
 
-			# Configure git to use GitHub CLI as the credential helper for enterprise.internal host
-			$ gh auth setup-git --hostname enterprise.internal
-		`),
+			# Configure git to use %[1]s as the credential helper for enterprise.internal host
+			$ %[2]s auth setup-git --hostname enterprise.internal
+		`, commandDisplayName, commandName),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.CredentialsHelperConfig = &gitcredentials.HelperConfig{
 				SelfExecutablePath: f.ExecutablePath,
@@ -82,13 +87,14 @@ func setupGitRun(opts *SetupGitOptions) error {
 
 	stderr := opts.IO.ErrOut
 	cs := opts.IO.ColorScheme()
+	commandName := commandNameOrDefault(opts.CommandName)
 
 	// If a hostname was provided, we'll set up just that one
 	if opts.Hostname != "" {
 		if !opts.Force && !has(opts.Hostname, hostnames) {
 			return fmt.Errorf("You are not logged into the GitHub host %q. Run %s to authenticate or provide `--force`",
 				opts.Hostname,
-				cs.Bold(fmt.Sprintf("gh auth login -h %s", opts.Hostname)),
+				cs.Bold(fmt.Sprintf("%s auth login -h %s", commandName, opts.Hostname)),
 			)
 		}
 
@@ -104,7 +110,7 @@ func setupGitRun(opts *SetupGitOptions) error {
 		fmt.Fprintf(
 			stderr,
 			"You are not logged into any GitHub hosts. Run %s to authenticate.\n",
-			cs.Bold("gh auth login"),
+			cs.Bold(fmt.Sprintf("%s auth login", commandName)),
 		)
 
 		return cmdutil.SilentError
@@ -117,6 +123,25 @@ func setupGitRun(opts *SetupGitOptions) error {
 	}
 
 	return nil
+}
+
+func commandNameForExecutable(executablePath string) string {
+	commandName := strings.TrimSuffix(filepath.Base(executablePath), ".exe")
+	return commandNameOrDefault(commandName)
+}
+
+func commandNameOrDefault(commandName string) string {
+	if commandName == "" || commandName == "." {
+		return "gh"
+	}
+	return commandName
+}
+
+func displayNameForCommand(commandName string) string {
+	if commandName == "gh" {
+		return "GitHub CLI"
+	}
+	return commandName
 }
 
 func has(needle string, haystack []string) bool {

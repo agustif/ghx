@@ -54,21 +54,42 @@ func TestHelperConfigContract(t *testing.T) {
 // This is a whitebox test unlike the contract because although we don't use the exact configured command, it's
 // important that it is exactly right since git uses it.
 func TestSetsCorrectCommandInGitConfig(t *testing.T) {
-	withIsolatedGitConfig(t)
-
-	gc := &git.Client{}
-	hc := &gitcredentials.HelperConfig{
-		SelfExecutablePath: "/path/to/gh",
-		GitClient:          gc,
+	tests := []struct {
+		name               string
+		selfExecutablePath string
+		want               string
+	}{
+		{
+			name:               "gh",
+			selfExecutablePath: "/path/to/gh",
+			want:               "!/path/to/gh auth git-credential\n",
+		},
+		{
+			name:               "ghx",
+			selfExecutablePath: "/path/to/ghx",
+			want:               "!/path/to/ghx auth git-credential\n",
+		},
 	}
-	require.NoError(t, hc.ConfigureOurs("github.com"))
 
-	// Check that the correct command was set in the git config
-	cmd, err := gc.Command(context.Background(), "config", "--get", "credential.https://github.com.helper")
-	require.NoError(t, err)
-	output, err := cmd.Output()
-	require.NoError(t, err)
-	require.Equal(t, "!/path/to/gh auth git-credential\n", string(output))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withIsolatedGitConfig(t)
+
+			gc := &git.Client{}
+			hc := &gitcredentials.HelperConfig{
+				SelfExecutablePath: tt.selfExecutablePath,
+				GitClient:          gc,
+			}
+			require.NoError(t, hc.ConfigureOurs("github.com"))
+
+			// Check that the exact command was set in the isolated git config.
+			cmd, err := gc.Command(context.Background(), "config", "--get", "credential.https://github.com.helper")
+			require.NoError(t, err)
+			output, err := cmd.Output()
+			require.NoError(t, err)
+			require.Equal(t, tt.want, string(output))
+		})
+	}
 }
 
 func TestHelperIsOurs(t *testing.T) {
