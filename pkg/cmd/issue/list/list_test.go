@@ -70,6 +70,49 @@ func runCommand(rt http.RoundTripper, isTTY bool, cli string) (*test.CmdOut, err
 	}, err
 }
 
+func TestNewCmdList_searchMatchFlag(t *testing.T) {
+	ios, _, _, _ := iostreams.Test()
+	factory := &cmdutil.Factory{IOStreams: ios}
+
+	var gotOpts *ListOptions
+	cmd := NewCmdList(factory, func(opts *ListOptions) error {
+		gotOpts = opts
+		return nil
+	})
+
+	argv, err := shlex.Split(`--search "auth bug" --match body,comments`)
+	require.NoError(t, err)
+	cmd.SetArgs(argv)
+	cmd.SetIn(&bytes.Buffer{})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+
+	_, err = cmd.ExecuteC()
+	require.NoError(t, err)
+	require.NotNil(t, gotOpts)
+	assert.Equal(t, "auth bug", gotOpts.Search)
+	assert.Equal(t, []string{"body", "comments"}, gotOpts.SearchFields)
+}
+
+func TestNewCmdList_matchRequiresSearch(t *testing.T) {
+	ios, _, _, _ := iostreams.Test()
+	factory := &cmdutil.Factory{IOStreams: ios}
+
+	var ran bool
+	cmd := NewCmdList(factory, func(opts *ListOptions) error {
+		ran = true
+		return nil
+	})
+	cmd.SetArgs([]string{"--match", "comments"})
+	cmd.SetIn(&bytes.Buffer{})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+
+	_, err := cmd.ExecuteC()
+	require.EqualError(t, err, "specify `--search` when using `--match`")
+	assert.False(t, ran)
+}
+
 func TestIssueList_nontty(t *testing.T) {
 	http := &httpmock.Registry{}
 	defer http.Verify(t)
@@ -444,6 +487,42 @@ func Test_issueList(t *testing.T) {
 							"repo":  "REPO",
 							"limit": float64(30),
 							"query": "( auth bug ) assignee:@me author:@me mentions:@me repo:OWNER/REPO state:open type:issue",
+							"type":  "ISSUE_ADVANCED",
+						}, params)
+					}))
+			},
+		},
+		{
+			name: "with search fields",
+			args: args{
+				// TODO advancedIssueSearchCleanup
+				// No need for feature detection once GHES 3.17 support ends.
+				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
+				limit:    30,
+				repo:     ghrepo.New("OWNER", "REPO"),
+				filters: prShared.FilterOptions{
+					Entity:       "issue",
+					State:        "open",
+					Search:       "auth bug",
+					SearchFields: []string{"body", "comments"},
+				},
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.GraphQL(`query IssueSearch\b`),
+					httpmock.GraphQLQuery(`
+					{ "data": {
+						"repository": { "hasIssuesEnabled": true },
+						"search": {
+							"issueCount": 0,
+							"nodes": []
+						}
+					} }`, func(_ string, params map[string]interface{}) {
+						assert.Equal(t, map[string]interface{}{
+							"owner": "OWNER",
+							"repo":  "REPO",
+							"limit": float64(30),
+							"query": "( auth bug ) (in:body OR in:comments) repo:OWNER/REPO state:open type:issue",
 							"type":  "ISSUE_ADVANCED",
 						}, params)
 					}))
