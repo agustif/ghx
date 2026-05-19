@@ -14,6 +14,7 @@ Research notes capture broad investigation, product angles, constraints, risks, 
 | [0003](0003-ghx-upstream-architecture-and-command-map.md) | [#12](https://github.com/agustif/ghx/issues/12) | Upstream command architecture, JSON conventions, testing patterns, and rebase-safe evolution. |
 | [0004](0004-ghx-release-upstream-and-distribution.md) | [#13](https://github.com/agustif/ghx/issues/13) | Release lanes, upstream sync, side-by-side distribution, versioning, and rollback. |
 | [0005](0005-ghx-cli-ux-and-human-factors.md) | [#14](https://github.com/agustif/ghx/issues/14) | Command naming, explain/dry-run ergonomics, output contracts, companion tools, and accessibility. |
+| [0006](0006-ghx-rugged-automation-and-ci-ops.md) | [#16](https://github.com/agustif/ghx/issues/16) | Shell-safe automation, PR gate explanation, failed-check inventory, targeted reruns, and external CI provider adapters. |
 
 ## Rules
 
