@@ -1,0 +1,143 @@
+name: ghx Release Snapshot
+run-name: ghx release snapshot / ${{ inputs.ref || github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag, or SHA to validate. Defaults to the workflow ref.
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GORELEASER_CONFIG: .goreleaser-ghx.yml
+  GORELEASER_VERSION: v2.13.1
+
+jobs:
+  snapshot:
+    name: Validate ghx release snapshot
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RELEASE_NOTES_FILE: ghx-release-snapshot-notes.md
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v7.2.2
+        with:
+          version: ${{ env.GORELEASER_VERSION }}
+          install-only: true
+
+      - name: Check GoReleaser config
+        run: goreleaser check -f "$GORELEASER_CONFIG"
+
+      - name: Guard non-publishing release config
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruby -ryaml -e '
+            config = YAML.load_file(ENV.fetch("GORELEASER_CONFIG"))
+            unless config.dig("release", "disable") == true
+              abort("#{ENV.fetch("GORELEASER_CONFIG")} must keep release.disable: true")
+            end
+
+            forbidden = %w[
+              aurs blobs blob_signs brews chocolateys dockers docker_manifests
+              homebrew_casks kos nfpms nix packages publishers signs snapcrafts
+              scoop sboms winget
+            ]
+            present = forbidden.select { |key| config.key?(key) }
+            unless present.empty?
+              abort("#{ENV.fetch("GORELEASER_CONFIG")} contains publishing/package sections: #{present.join(", ")}")
+            end
+          '
+
+      - name: Write snapshot release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >"$RELEASE_NOTES_FILE" <<'NOTES'
+          ghx release snapshot validation.
+
+          This workflow validates the fork-owned GoReleaser snapshot path only.
+          It must not publish GitHub Releases, docs, Homebrew formulae, packages,
+          signing output, attestations, or external artifacts.
+          NOTES
+
+      - name: Build GoReleaser snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          goreleaser release \
+            -f "$GORELEASER_CONFIG" \
+            --snapshot \
+            --clean \
+            --release-notes="$RELEASE_NOTES_FILE"
+
+      - name: Smoke ghx source release identity
+        run: make smoke-ghx-release
+
+      - name: Verify ghx artifact boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          ghx_archives=(dist/ghx_*.tar.gz dist/ghx_*.zip)
+          ghx_checksums=(dist/ghx_*_checksums.txt)
+          if ((${#ghx_archives[@]} == 0)); then
+            echo "expected at least one dist/ghx_* archive" >&2
+            find dist -maxdepth 2 -type f -print | sort >&2
+            exit 1
+          fi
+
+          if ((${#ghx_checksums[@]} == 0)); then
+            echo "expected at least one dist/ghx_*_checksums.txt file" >&2
+            find dist -maxdepth 2 -type f -print | sort >&2
+            exit 1
+          fi
+
+          upstream_archives=(dist/gh_*.tar.gz dist/gh_*.zip dist/gh_*.deb dist/gh_*.rpm dist/gh_*.pkg dist/gh_*.msi)
+          if ((${#upstream_archives[@]} != 0)); then
+            printf 'unexpected upstream gh artifact: %s\n' "${upstream_archives[@]}" >&2
+            exit 1
+          fi
+
+          {
+            echo "### ghx release snapshot"
+            echo
+            echo "Validated \`$GORELEASER_CONFIG\` with GoReleaser \`$GORELEASER_VERSION\`."
+            echo
+            echo "Artifacts:"
+            printf -- "- \`%s\`\n" "${ghx_archives[@]}" "${ghx_checksums[@]}"
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Upload ghx release snapshot artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ghx-release-snapshot-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            dist/ghx_*.tar.gz
+            dist/ghx_*.zip
+            dist/ghx_*_checksums.txt
