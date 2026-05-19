@@ -310,7 +310,8 @@ Primary files:
 
 - [ghx release operator runbook](ghx-release-operator-runbook.md)
 - [ghx side-by-side migration and rollback runbook](ghx-side-by-side-migration-runbook.md)
-- future smoke scripts
+- `script/smoke-ghx-release`
+- `docs/plans/ghx-release-smoke-matrix.md`
 - `docs/releasing.md`
 - `docs/release-process-deep-dive.md`
 - future fork release checklist
