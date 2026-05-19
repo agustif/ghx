@@ -38,6 +38,27 @@ The near-term PM rule is to ship one useful read-only control-plane slice at a t
 - [Extension bundle](ghx-extension-bundle.md): curated extension catalog and wrapper posture.
 - [Agent workflows](ghx-agent-workflows.md): contributor and agent guide for progress logs, JSON, screenshots, and collaboration-safe command patterns.
 
+## Manual and generated reference
+
+The public manual at `https://cli.github.com/manual/` is upstream `gh` documentation. It remains owned by the upstream site and should not be used as a `ghx` publication target.
+
+Generate fork-owned `ghx` reference pages into a local or fork-owned directory:
+
+```sh
+$ mkdir -p dist/ghx-manual
+$ go run ./cmd/gen-docs --website --doc-path dist/ghx-manual --command-name ghx
+```
+
+Generate fork-owned `ghx` manpages with the source install target:
+
+```sh
+$ make manpages-ghx
+```
+
+The generated filenames, headings, links, and prompt examples use the configured command name, for example `ghx_issue_create.md`, `ghx-issue-create.1`, `## ghx issue create`, and `$ ghx issue create`.
+
+Do not run the upstream `site-docs` target or production deployment workflow as a `ghx` manual publication path. Those paths check out or mutate the upstream `github/cli.github.com` site and are still part of the inherited `gh` release process.
+
 ## First implementation lanes
 
 1. Stabilize scoped account binding so `.ghaccount`, cwd scope, session scope, and explicit env overrides are predictable.
