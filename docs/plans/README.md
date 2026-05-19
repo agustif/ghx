@@ -20,6 +20,7 @@ This directory holds implementation plans for the fork-specific `ghx` roadmap.
 | [ghx side-by-side migration and rollback runbook](ghx-side-by-side-migration-runbook.md) | Operator-safe sidecar and shadow-mode install, account selection, helper wiring, and rollback steps. |
 | [ghx release operator runbook](ghx-release-operator-runbook.md) | Staging, verification, publication, distribution matrix, and rollback sequence for `ghx` releases. |
 | [ghx release provenance and verification runbook](ghx-release-provenance-runbook.md) | Fork-owned artifact naming, checksum, attestation, staging, and production verification steps for `ghx` releases. |
+| [ghx upstream sync and support audit](ghx-upstream-sync-support-audit.md) | Upstream sync policy, release branch gates, and telemetry/support/product identity audit for issues #66 and #71. |
 
 ## Current order
 
