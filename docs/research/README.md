@@ -5,6 +5,8 @@ Date: 2026-05-17
 
 Research notes capture broad investigation, product angles, constraints, risks, and open questions before a decision is ready for an ADR or a proposal is ready for an RFC.
 
+Related user doc: [ghx vs gh](../ghx-vs-gh.md) is the current shipped behavior comparison. Research notes may describe roadmap work that is not shipped.
+
 ## Records
 
 | Note | Roadmap issue | Area |

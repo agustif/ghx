@@ -4,9 +4,9 @@ Status: draft
 Date: 2026-05-17
 Scope: gaps between the current `ghx` command surface and the GitHub API/product surfaces that are exposed by REST or GraphQL but not made operationally first-class by the CLI.
 
-Companion docs: [ghx index](ghx.md), [ADR index](adr/README.md), [plan index](plans/README.md).
+Companion docs: [ghx index](ghx.md), [ghx vs gh](ghx-vs-gh.md), [ADR index](adr/README.md), [plan index](plans/README.md).
 
-## Current local surface
+## Current shipped fork delta
 
 The local fork currently exposes the same broad groups as upstream `gh`, plus fork-specific account-scoping work:
 
@@ -16,6 +16,8 @@ The local fork currently exposes the same broad groups as upstream `gh`, plus fo
 - Policy and supply chain: `ruleset`, `attestation`, `release verify`, `release verify-asset`.
 - Utilities: `api`, `browse`, `codespace`, `extension`, `copilot`, `agent-task`, `skill`.
 - ghx fork delta so far: scoped account selection via `GH_ACCOUNT`, `GH_ACCOUNT_SESSION`, cwd scope, `.ghaccount`, and `auth status` source visibility.
+
+For the user-facing shipped behavior comparison, see [ghx vs gh](ghx-vs-gh.md). This gap map intentionally includes roadmap targets that are not shipped yet.
 
 The CLI has breadth. The gap is that it mostly exposes individual nouns, while real GitHub work needs cross-surface answers like "can this PR merge now?", "why is this run blocked?", "which policy caused this?", and "which account/repo will this mutation hit?"
 

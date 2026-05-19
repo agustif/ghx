@@ -103,6 +103,8 @@ The `ghx` fork keeps upstream `gh` behavior available while adding non-global ac
 `gh auth switch` behavior still changes the host-global active account, but scoped switches can bind an account to
 a working tree or session without rewriting the active account for every other terminal.
 
+### ghx-only account precedence
+
 ```
 ➜ ghx auth switch --user williammartin --scope cwd
 ✓ Set cwd account for github.com to williammartin
@@ -140,6 +142,16 @@ Session scope is selected with `GH_ACCOUNT_SESSION`:
 For one process, `GH_ACCOUNT=<user>` overrides everything except explicit token environment variables. `GH_ACCOUNT_SESSION`
 overrides `.ghaccount` and cwd scopes for a named shell/session. `GH_TOKEN` and `GITHUB_TOKEN` still take priority because
 explicit token environment variables are already the strongest authentication signal in `gh`.
+
+### Shared auth state and git credential helper behavior
+
+`ghx` uses the same auth storage model as regular `gh`. Scoped account selection changes which stored account `ghx`
+selects for a command, but it does not move tokens into a separate store.
+
+In side-by-side installs, `ghx api` may honor `GH_ACCOUNT`, `.ghaccount`, or a cwd binding while `git push` still calls
+the helper configured in git config. If that helper is stock `gh auth git-credential`, git operations can use the
+host-global active account even though `ghx` commands use a scoped account. Configure the helper intentionally when git
+operations must follow the fork binary.
 
 Finally, running `gh auth logout` presents a prompt when there are multiple choices for logout, and switches account
 if there are any remaining logged into the host:
