@@ -265,6 +265,10 @@ Migration decision:
 - Users need verification examples for `ghx_*` artifacts and fork repo identity.
 - Staging and production provenance differences must be explicit.
 
+Runbook:
+
+- [#65 ghx release provenance and verification runbook](ghx-release-provenance-runbook.md)
+
 ### Upstream sync and repo automation
 
 Owned by [#66](https://github.com/agustif/ghx/issues/66) and [#72](https://github.com/agustif/ghx/issues/72).
