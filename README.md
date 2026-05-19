@@ -31,7 +31,9 @@ GitHub CLI is supported for users on GitHub.com, GitHub Enterprise Cloud, and Gi
 
 ## Documentation
 
-For [installation options see below](#installation), for usage instructions [see the manual](https://cli.github.com/manual/).
+For [installation options see below](#installation), regular upstream `gh` usage instructions remain on the
+[public manual](https://cli.github.com/manual/). Fork-owned `ghx` docs start at [docs/ghx.md](docs/ghx.md),
+including the local generated reference path.
 
 ## Contributing
 

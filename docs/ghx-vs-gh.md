@@ -24,6 +24,7 @@ Snapshot used for this page:
 | Issue search fields | `gh issue list --search` does not expose issue-field scoping in the compared upstream snapshot. | Search can be constrained to issue title, body, and comments. | `ghx issue list --search "runner failed" --match body,comments`. |
 | Runtime update and version links | Update checks and changelog links point at `cli/cli`, and Homebrew users can be told to run `brew upgrade gh`. | `ghx` update checks and version links point at `agustif/ghx`; `ghx` does not print the upstream `brew upgrade gh` hint. | `ghx --version`, update notifier output. |
 | Fork documentation | Upstream docs describe regular `gh` development and usage. | Adds fork-specific ADRs, RFCs, plans, research notes, API coverage reports, and operational gap maps. | Start at `docs/ghx.md`. |
+| Generated reference | The public manual at `cli.github.com/manual` is generated for upstream `gh`. | `ghx` generated reference can be produced locally with `--command-name ghx`, but is not published to the upstream site. | `go run ./cmd/gen-docs --website --doc-path dist/ghx-manual --command-name ghx`. |
 
 ## Compatibility contract
 
@@ -95,7 +96,33 @@ ghx issue list
 
 Installing `ghx` does not require replacing upstream `gh`. A machine can still opt into `ghx` as default `gh` by placing a symlink earlier on `PATH`.
 
-Current install caveat: `make install-ghx` installs the fork binary, but fork-specific completions, manpages, and packaged release artifacts are not yet first-class. Package manager instructions in the upstream install docs install regular `gh`, not `ghx`. The execution map for closing these gaps is [first-class ghx release and automation migration](plans/ghx-first-class-release-migration.md).
+Current install caveat: `make install-ghx` installs the fork binary, fork-owned completions, and fork-owned manpages, but packaged release artifacts are not yet first-class. Package manager instructions in the upstream install docs install regular `gh`, not `ghx`. The execution map for closing these gaps is [first-class ghx release and automation migration](plans/ghx-first-class-release-migration.md).
+
+## Generated reference and manual publishing
+
+The public manual at `https://cli.github.com/manual/` remains upstream `gh` documentation. `ghx` does not publish generated command reference pages to that site.
+
+Implemented divergence:
+
+- `cmd/gen-docs` accepts `--command-name ghx`.
+- `make manpages-ghx` writes `ghx*.1` manpages under `share/man/man1`.
+- A local website reference can be generated into a fork-owned directory:
+
+```sh
+mkdir -p dist/ghx-manual
+go run ./cmd/gen-docs --website --doc-path dist/ghx-manual --command-name ghx
+```
+
+Expected generated files include:
+
+- `dist/ghx-manual/ghx.md`
+- `dist/ghx-manual/ghx_help_environment.md`
+- `dist/ghx-manual/ghx_issue.md`
+- `dist/ghx-manual/ghx_issue_create.md`
+
+Generated headings, links, and shell prompt examples use the configured `ghx` command name.
+
+The inherited `site-docs` Make target and `.github/workflows/deployment.yml` release workflow remain upstream `gh` publication paths. They check out or update `github/cli.github.com`, operate on `manual/gh*.md`, and must not be treated as the `ghx` manual publication path unless a future release issue replaces them with fork-owned targets and credentials.
 
 ## Runtime update and version identity
 

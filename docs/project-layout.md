@@ -29,8 +29,16 @@ text, is in [pkg/cmd/issue/list/list.go](../pkg/cmd/issue/list/list.go)
 Other help topics not specific to any command, for example `gh help environment`, are found in
 [pkg/cmd/root/help_topic.go](../pkg/cmd/root/help_topic.go).
 
-During our release process, these help topics are [automatically converted](../cmd/gen-docs/main.go) to
+During the upstream `gh` release process, these help topics are [automatically converted](../cmd/gen-docs/main.go) to
 manual pages and published under https://cli.github.com/manual/.
+
+The `ghx` fork can generate a fork-owned local reference with:
+
+```sh
+go run ./cmd/gen-docs --website --doc-path dist/ghx-manual --command-name ghx
+```
+
+That local `ghx` reference is separate from the inherited upstream `site-docs` and deployment publication paths.
 
 ## How GitHub CLI works
 

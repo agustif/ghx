@@ -16,6 +16,7 @@ import (
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/extensions"
 	"github.com/cli/cli/v2/pkg/iostreams"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -47,6 +48,11 @@ func run(args []string) error {
 		return fmt.Errorf("error: --doc-path not set")
 	}
 
+	docCommandName := *commandName
+	if docCommandName == "" {
+		docCommandName = "gh"
+	}
+
 	ios, _, _, _ := iostreams.Test()
 	rootCmd, _ := root.NewCmdRoot(&cmdutil.Factory{
 		IOStreams: ios,
@@ -55,8 +61,9 @@ func run(args []string) error {
 			return config.NewFromString(""), nil
 		},
 		ExtensionManager: &em{},
-	}, &telemetry.NoOpService{}, "", "", *commandName)
+	}, &telemetry.NoOpService{}, "", "", docCommandName)
 	rootCmd.InitDefaultHelpCmd()
+	rewriteGeneratedDocsCommandName(rootCmd, "gh", docCommandName)
 
 	if err := os.MkdirAll(*dir, 0755); err != nil {
 		return err
@@ -88,6 +95,65 @@ permalink: /:path/:basename
 
 func linkHandler(name string) string {
 	return fmt.Sprintf("./%s", strings.TrimSuffix(name, ".md"))
+}
+
+func rewriteGeneratedDocsCommandName(cmd *cobra.Command, from string, to string) {
+	if from == to {
+		return
+	}
+
+	if basename, found := cmd.Annotations["markdown:basename"]; found {
+		cmd.Annotations["markdown:basename"] = rewriteGeneratedDocToken(basename, from, to)
+	}
+
+	cmd.Example = rewritePromptExamples(cmd.Example, from, to)
+
+	for _, child := range cmd.Commands() {
+		rewriteGeneratedDocsCommandName(child, from, to)
+	}
+}
+
+func rewriteGeneratedDocToken(value string, from string, to string) string {
+	if value == from {
+		return to
+	}
+	if strings.HasPrefix(value, from+"_") {
+		return to + strings.TrimPrefix(value, from)
+	}
+	if strings.HasPrefix(value, from+"-") {
+		return to + strings.TrimPrefix(value, from)
+	}
+	return value
+}
+
+func rewritePromptExamples(example string, from string, to string) string {
+	if example == "" {
+		return example
+	}
+
+	lines := strings.SplitAfter(example, "\n")
+	for i, line := range lines {
+		newline := ""
+		if strings.HasSuffix(line, "\n") {
+			line = strings.TrimSuffix(line, "\n")
+			newline = "\n"
+		}
+
+		indentLen := len(line) - len(strings.TrimLeft(line, " \t"))
+		indent := line[:indentLen]
+		rest := line[indentLen:]
+
+		prompt := "$ " + from
+		if rest == prompt {
+			rest = "$ " + to
+		} else if strings.HasPrefix(rest, prompt+" ") {
+			rest = "$ " + to + strings.TrimPrefix(rest, prompt)
+		}
+
+		lines[i] = indent + rest + newline
+	}
+
+	return strings.Join(lines, "")
 }
 
 // Implements browser.Browser interface.
