@@ -5,10 +5,10 @@ package ghcmd
 // `updateable` is a build tag set in the gh formula within homebrew/homebrew-core
 // and is used to control whether users are notified of newer GitHub CLI releases.
 //
-// Currently, updaterEnabled needs to be set to 'cli/cli' as it affects where
-// update.CheckForUpdate() checks for releases. It is unclear to what extent
-// this updaterEnabled is being used by unofficial forks or builds, so we decided
-// to leave it available for injection as a string variable for now.
+// Currently, updaterEnabled defaults to 'cli/cli' as it affects where
+// update.CheckForUpdate() checks for releases. ghx builds remap this default to
+// agustif/ghx at runtime so forked binaries do not read upstream release
+// metadata. Other injected values are still left available for packagers.
 //
 // Development builds do not generate update messages by default.
 //

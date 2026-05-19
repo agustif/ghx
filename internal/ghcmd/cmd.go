@@ -148,7 +148,7 @@ func Main() exitCode {
 	defer updateCancel()
 	updateMessageChan := make(chan *update.ReleaseInfo)
 	go func() {
-		rel, err := checkForUpdate(updateCtx, cmdFactory, buildVersion)
+		rel, err := checkForUpdate(updateCtx, cmdFactory, buildName, buildVersion)
 		if err != nil && hasDebug {
 			fmt.Fprintf(stderr, "warning: checking for update failed: %v", err)
 		}
@@ -263,11 +263,13 @@ func Main() exitCode {
 			return exitOK
 		}
 		fmt.Fprintf(stderr, "\n\n%s %s → %s\n",
-			ansi.Color("A new release of gh is available:", "yellow"),
+			ansi.Color(fmt.Sprintf("A new release of %s is available:", buildName), "yellow"),
 			ansi.Color(strings.TrimPrefix(buildVersion, "v"), "cyan"),
 			ansi.Color(strings.TrimPrefix(newRelease.Version, "v"), "cyan"))
 		if isHomebrew {
-			fmt.Fprintf(stderr, "To upgrade, run: %s\n", "brew upgrade gh")
+			if upgradeCommand := homebrewUpgradeCommand(buildName); upgradeCommand != "" {
+				fmt.Fprintf(stderr, "To upgrade, run: %s\n", upgradeCommand)
+			}
 		}
 		fmt.Fprintf(stderr, "%s\n\n",
 			ansi.Color(newRelease.URL, "yellow"))
@@ -318,16 +320,38 @@ func authRecoveryCommand(cfg gh.Config, httpErr api.HTTPError) string {
 	return fmt.Sprintf("gh auth login -h %s", hostname)
 }
 
-func checkForUpdate(ctx context.Context, f *cmdutil.Factory, currentVersion string) (*update.ReleaseInfo, error) {
-	if updaterEnabled == "" || !update.ShouldCheckForUpdate() {
+func checkForUpdate(ctx context.Context, f *cmdutil.Factory, commandName, currentVersion string) (*update.ReleaseInfo, error) {
+	repo := updateRepository(commandName)
+	if repo == "" || !update.ShouldCheckForUpdate() {
 		return nil, nil
 	}
 	httpClient, err := f.HttpClient()
 	if err != nil {
 		return nil, err
 	}
-	stateFilePath := filepath.Join(config.StateDir(), "state.yml")
-	return update.CheckForUpdate(ctx, httpClient, stateFilePath, updaterEnabled, currentVersion)
+	stateFilePath := updateStateFilePath(commandName)
+	return update.CheckForUpdate(ctx, httpClient, stateFilePath, repo, currentVersion)
+}
+
+func updateStateFilePath(commandName string) string {
+	if commandName == "ghx" {
+		return filepath.Join(config.StateDir(), "state-ghx.yml")
+	}
+	return filepath.Join(config.StateDir(), "state.yml")
+}
+
+func updateRepository(commandName string) string {
+	if commandName == "ghx" && updaterEnabled == "cli/cli" {
+		return "agustif/ghx"
+	}
+	return updaterEnabled
+}
+
+func homebrewUpgradeCommand(commandName string) string {
+	if commandName == "" || commandName == "gh" {
+		return "brew upgrade gh"
+	}
+	return ""
 }
 
 func isRecentRelease(publishedAt time.Time) bool {

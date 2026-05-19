@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/cli/cli/v2/api"
@@ -582,6 +583,124 @@ func Test_authRecoveryCommand(t *testing.T) {
 			got := authRecoveryCommand(cfg, httpErr)
 			if got != tt.want {
 				t.Errorf("authRecoveryCommand() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_updateRepository(t *testing.T) {
+	originalUpdaterEnabled := updaterEnabled
+	t.Cleanup(func() {
+		updaterEnabled = originalUpdaterEnabled
+	})
+
+	tests := []struct {
+		name           string
+		commandName    string
+		updaterEnabled string
+		want           string
+	}{
+		{
+			name:           "gh uses upstream default",
+			commandName:    "gh",
+			updaterEnabled: "cli/cli",
+			want:           "cli/cli",
+		},
+		{
+			name:           "empty command uses upstream default",
+			commandName:    "",
+			updaterEnabled: "cli/cli",
+			want:           "cli/cli",
+		},
+		{
+			name:           "ghx remaps upstream default to fork",
+			commandName:    "ghx",
+			updaterEnabled: "cli/cli",
+			want:           "agustif/ghx",
+		},
+		{
+			name:           "ghx keeps packager override",
+			commandName:    "ghx",
+			updaterEnabled: "example/fork",
+			want:           "example/fork",
+		},
+		{
+			name:           "disabled stays disabled",
+			commandName:    "ghx",
+			updaterEnabled: "",
+			want:           "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			updaterEnabled = tt.updaterEnabled
+			if got := updateRepository(tt.commandName); got != tt.want {
+				t.Errorf("updateRepository() = %q, wants %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_updateStateFilePath(t *testing.T) {
+	tests := []struct {
+		name        string
+		commandName string
+		wantSuffix  string
+	}{
+		{
+			name:        "gh uses existing state file",
+			commandName: "gh",
+			wantSuffix:  "state.yml",
+		},
+		{
+			name:        "empty command uses existing state file",
+			commandName: "",
+			wantSuffix:  "state.yml",
+		},
+		{
+			name:        "ghx uses fork state file",
+			commandName: "ghx",
+			wantSuffix:  "state-ghx.yml",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := updateStateFilePath(tt.commandName); !strings.HasSuffix(got, tt.wantSuffix) {
+				t.Errorf("updateStateFilePath() = %q, wants suffix %q", got, tt.wantSuffix)
+			}
+		})
+	}
+}
+
+func Test_homebrewUpgradeCommand(t *testing.T) {
+	tests := []struct {
+		name        string
+		commandName string
+		want        string
+	}{
+		{
+			name:        "gh",
+			commandName: "gh",
+			want:        "brew upgrade gh",
+		},
+		{
+			name:        "empty command",
+			commandName: "",
+			want:        "brew upgrade gh",
+		},
+		{
+			name:        "ghx",
+			commandName: "ghx",
+			want:        "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := homebrewUpgradeCommand(tt.commandName); got != tt.want {
+				t.Errorf("homebrewUpgradeCommand() = %q, wants %q", got, tt.want)
 			}
 		})
 	}

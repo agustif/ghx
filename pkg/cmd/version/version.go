@@ -39,11 +39,11 @@ func FormatForCommand(commandName, version, buildDate string) string {
 		dateStr = fmt.Sprintf(" (%s)", buildDate)
 	}
 
-	return fmt.Sprintf("%s version %s%s\n%s\n", commandName, version, dateStr, changelogURL(version))
+	return fmt.Sprintf("%s version %s%s\n%s\n", commandName, version, dateStr, changelogURL(commandName, version))
 }
 
-func changelogURL(version string) string {
-	path := "https://github.com/cli/cli"
+func changelogURL(commandName, version string) string {
+	path := fmt.Sprintf("https://github.com/%s", releaseRepository(commandName))
 	r := regexp.MustCompile(`^v?\d+\.\d+\.\d+(-[\w.]+)?$`)
 	if !r.MatchString(version) {
 		return fmt.Sprintf("%s/releases/latest", path)
@@ -51,4 +51,11 @@ func changelogURL(version string) string {
 
 	url := fmt.Sprintf("%s/releases/tag/v%s", path, strings.TrimPrefix(version, "v"))
 	return url
+}
+
+func releaseRepository(commandName string) string {
+	if commandName == "ghx" {
+		return "agustif/ghx"
+	}
+	return "cli/cli"
 }
