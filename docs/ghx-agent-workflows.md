@@ -54,6 +54,27 @@ Agent-facing commands should support:
 - `--explain`
 - `--dry-run` for mutation
 
+## Shell-safe automation
+
+Agents should avoid complex login-shell one-liners for operational work. Use stable argument vectors, stdin, and files when commands include markdown, JSON, loops, or remote mutation.
+
+Preferred patterns:
+
+```sh
+ghx pr comment <pr> --body-file -
+bash --noprofile --norc ./script.sh
+ghx pr gate explain <pr> --json
+ghx checks inventory --repo OWNER/REPO --state open --name 'arcus/*' --conclusion failure --json
+```
+
+Rules:
+
+- use `--body-file -` for multi-line PR comments or issue comments
+- prefer `bash --noprofile --norc` for generated multi-line scripts unless the target explicitly requires another shell
+- avoid parsing large review bodies when only merge state, review state, and check state are needed
+- prefer targeted check reruns over broad workflow reruns
+- record exact PR, SHA, check name, details URL, and rerun endpoint before mutating
+
 ## Issue search
 
 Use repo-scoped issue search when the current working tree is the source of truth, and use global search when the task spans owners or repositories.

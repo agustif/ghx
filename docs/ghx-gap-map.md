@@ -52,6 +52,28 @@ The CLI has breadth. The gap is that it mostly exposes individual nouns, while r
 | Workflow automation | `workflow`, `run`, and `agent-task` are primitives | `github/gh-aw`, Actions, issues, PRs, safe outputs, approval gates | `partial` | Adopt `gh aw` as a first-class companion for durable repo workflows, not as a replacement for interactive `ghx` |
 | Extension ecosystem | `extension install/search/list/upgrade` exists | `gh-extension` topic and installed extensions | `thin` | `ghx ext bundle`, curated extension manifests, provenance checks, account-aware wrappers |
 
+## Agent leverage shortlist from API mining
+
+Manual mining on 2026-05-19 used the local command surface, the official REST OpenAPI description, and live GraphQL schema introspection. The strongest opportunities are the surfaces where GitHub already exposes structured data but the CLI still makes an operator or agent stitch together several commands and raw API calls.
+
+| Add next | API-backed data | Current CLI gap | First read-only command | First mutating command |
+| --- | --- | --- | --- | --- |
+| Merge cockpit | PR review decision, review threads, checks, rulesets, deployments, merge queue | `pr view`, `pr checks`, `ruleset`, and raw API do not answer readiness in one result | `ghx pr ready --json` | `ghx pr merge --when-ready --dry-run` |
+| Unresolved review threads | GraphQL `PullRequestReviewThread.isResolved`, `isOutdated`, file/line, comments | No terminal triage for actionable threads | `ghx pr threads --unresolved --json` | `ghx pr threads resolve --id <id> --dry-run` |
+| Failed check inventory | REST checks, check suites, workflow runs/jobs, annotations, `details_url` | `pr checks` is per PR and `run rerun` is too broad | `ghx checks inventory --state open --conclusion failure` | `ghx checks rerun --name <pattern> --confirm` |
+| Policy explanation | REST/GraphQL rulesets, rule suites, branch protection, required deployments | `ruleset check` does not explain why a PR is blocked | `ghx rules why-blocked <pr> --json` | `ghx rules export/import --dry-run` |
+| Pending deployments | Workflow pending deployments, environments, deployment reviews | Environment approvals require raw API/browser work | `ghx env pending --repo OWNER/REPO` | `ghx env approve <run> --environment <name> --dry-run` |
+| Deployment timeline | REST deployments/statuses, GraphQL deployment status/log URLs | Deployment state is not a first-class workflow | `ghx deploy timeline --pr <n>` | `ghx deploy mark --state success --dry-run` |
+| Runner capacity | Hosted runner list, limits, images, platforms, machine sizes, self-hosted runner permissions | No runner operations beyond raw API | `ghx runners status --org <org>` | `ghx runners update --dry-run` |
+| Artifact and cache hygiene | Artifact list/delete, digest, expiry, cache usage, retention, storage limits | `run download` and `cache delete` do not answer storage health | `ghx actions storage report` | `ghx artifact sweep --dry-run` |
+| Security inbox | Code scanning, secret scanning, Dependabot, security advisories | No unified alert queue | `ghx sec inbox --org <org>` | `ghx sec dismiss --dry-run` |
+| Org access why | Org roles, teams, outside collaborators, SAML, PAT requests, app installations | `org list` cannot answer permission mysteries | `ghx org access why <user> --repo OWNER/REPO` | `ghx org tokens review --dry-run` |
+| Webhook delivery ops | Org/repo webhook deliveries and redelivery endpoints | Browser/raw API only | `ghx hooks deliveries --failed` | `ghx hooks redeliver --dry-run` |
+| Agent and Copilot policy | REST `agent-tasks`, Copilot coding-agent policy, metrics, user management | Preview commands exist but no admin cockpit | `ghx agent tasks`, `ghx agent policy` | `ghx agent policy set --dry-run` |
+| Projects v2 sync | REST and GraphQL Projects v2 fields, items, views, workflows | `project` is CRUD, not plan health | `ghx board status` | `ghx board sync-pr --dry-run` |
+
+Build order should favor read-only commands that collapse cross-surface diagnosis. Mutating commands can follow after JSON shapes, dry-run output, and account/repo explanation have stabilized.
+
 ## Highest-value additions
 
 ### 0. Generated validated API proxies
@@ -387,10 +409,11 @@ The lowest-risk order is:
 3. `ghx pr ready --json`: read-only GraphQL/REST aggregation. High daily value.
 4. `ghx pr threads`: focused read-only GraphQL surface that feeds `pr ready`.
 5. `ghx ci doctor`: read-only REST aggregation over runs/jobs/logs.
-6. `ghx rules explain`: mostly read-only REST/GraphQL rulesets.
-7. `ghx deploy status` and `ghx env pending`: read-only deployment/environment gates.
-8. `ghx sec inbox`: read-only security alert aggregation.
-9. Mutating variants: approvals, deployment statuses, alert dismissal, ruleset import, cache/artifact pruning.
+6. `ghx pr gate explain` and `ghx checks inventory`: explain merge blockers and collect failed external checks across open PRs.
+7. `ghx rules explain`: mostly read-only REST/GraphQL rulesets.
+8. `ghx deploy status` and `ghx env pending`: read-only deployment/environment gates.
+9. `ghx sec inbox`: read-only security alert aggregation.
+10. Mutating variants: approvals, targeted check reruns, deployment statuses, alert dismissal, ruleset import, cache/artifact pruning.
 
 ## Design rules for ghx-only surfaces
 
@@ -402,6 +425,8 @@ The lowest-risk order is:
 - Scoped account context must be visible in status and blocker output.
 - Errors should include the next exact command when possible.
 - Raw API access remains available through `ghx api`, but common operational paths should not require hand-written GraphQL.
+- Multi-line remote text should prefer stdin or files over shell-expanded `--body` strings.
+- Failed-check reruns should support dry-run, exact target lists, and check-name filtering.
 
 ## Source map
 
