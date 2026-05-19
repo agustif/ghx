@@ -2,6 +2,9 @@
 
 To read about what happens during a production deployment, see the [release process deep dive doc](release-process-deep-dive.md).
 
+> [!IMPORTANT]
+> In the `ghx` fork, this page still describes upstream `gh` production release behavior. Do not run `script/release` or `.github/workflows/deployment.yml` for a production `ghx` release until the fork-owned replacement in [the workflow automation audit](plans/ghx-workflow-automation-audit.md) is complete.
+
 To initiate a new production deployment:
 
 ```sh
