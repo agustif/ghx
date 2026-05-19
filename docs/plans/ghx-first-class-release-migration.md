@@ -174,8 +174,10 @@ Known upstream assumptions:
 
 - `make completions` builds bash, fish, and zsh files for `gh`
 - `make manpages` generates `gh*.1`
-- `install-ghx` currently installs only the binary
-- there is no `uninstall-ghx`
+- `make completions-ghx` builds bash, fish, and zsh files for `ghx`
+- `make manpages-ghx` generates `ghx*.1`
+- `install-ghx` installs the `ghx` binary, completions, and manpages
+- `uninstall-ghx` removes only `ghx`-owned source install files
 
 Migration decision:
 

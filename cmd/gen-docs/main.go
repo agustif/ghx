@@ -31,6 +31,7 @@ func run(args []string) error {
 	manPage := flags.BoolP("man-page", "", false, "Generate manual pages")
 	website := flags.BoolP("website", "", false, "Generate website pages")
 	dir := flags.StringP("doc-path", "", "", "Path directory where you want generate doc files")
+	commandName := flags.StringP("command-name", "", "gh", "Command name to use in generated docs")
 	help := flags.BoolP("help", "h", false, "Help about any command")
 
 	if err := flags.Parse(args); err != nil {
@@ -54,7 +55,7 @@ func run(args []string) error {
 			return config.NewFromString(""), nil
 		},
 		ExtensionManager: &em{},
-	}, &telemetry.NoOpService{}, "", "")
+	}, &telemetry.NoOpService{}, "", "", *commandName)
 	rootCmd.InitDefaultHelpCmd()
 
 	if err := os.MkdirAll(*dir, 0755); err != nil {

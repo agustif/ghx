@@ -54,6 +54,21 @@ $ make install-ghx prefix=$HOME/.local
 $ ghx version
 ```
 
+`install-ghx` installs only fork-owned paths:
+
+- `${prefix}/bin/ghx`
+- `${prefix}/share/man/man1/ghx*.1`
+- `${prefix}/share/bash-completion/completions/ghx`
+- `${prefix}/share/fish/vendor_completions.d/ghx.fish`
+- `${prefix}/share/zsh/site-functions/_ghx`
+- `${prefix}/share/zsh/vendor-completions/_ghx`
+
+To remove those files without touching an upstream `gh` install:
+
+```sh
+$ make uninstall-ghx prefix=$HOME/.local
+```
+
 **Windows**
 
 ```pwsh
@@ -61,7 +76,7 @@ $ ghx version
 > bin\ghx version
 ```
 
-The current `install-ghx` target installs the binary path only. Fork-specific completions, manpages, packages, and update metadata are still roadmap work.
+The source install target builds ghx shell completions and ghx manpages locally. Package manager metadata and update metadata are still roadmap work.
 
 ## Cross-compiling binaries for different platforms
 

@@ -35,6 +35,11 @@ clean: script/build$(EXE)
 manpages: script/build$(EXE)
 	@$< $@
 
+.PHONY: manpages-ghx
+manpages-ghx: script/build$(EXE)
+	rm -f ./share/man/man1/ghx.1 ./share/man/man1/ghx-*.1
+	go run ./cmd/gen-docs --man-page --doc-path ./share/man/man1/ --command-name ghx
+
 .PHONY: completions
 completions: bin/gh$(EXE)
 	mkdir -p ./share/bash-completion/completions ./share/fish/vendor_completions.d ./share/zsh/site-functions ./share/zsh/vendor-completions
@@ -45,6 +50,14 @@ completions: bin/gh$(EXE)
 	# but does include /usr/share/zsh/vendor-completions, so we ship both paths in our
 	# .deb and .rpm packages. See https://github.com/cli/cli/issues/13166
 	cp ./share/zsh/site-functions/_gh ./share/zsh/vendor-completions/_gh
+
+.PHONY: completions-ghx
+completions-ghx: bin/ghx$(EXE)
+	mkdir -p ./share/bash-completion/completions ./share/fish/vendor_completions.d ./share/zsh/site-functions ./share/zsh/vendor-completions
+	bin/ghx$(EXE) completion -s bash > ./share/bash-completion/completions/ghx
+	bin/ghx$(EXE) completion -s fish > ./share/fish/vendor_completions.d/ghx.fish
+	bin/ghx$(EXE) completion -s zsh > ./share/zsh/site-functions/_ghx
+	cp ./share/zsh/site-functions/_ghx ./share/zsh/vendor-completions/_ghx
 
 .PHONY: lint
 lint:
@@ -105,9 +118,19 @@ install: bin/gh manpages completions
 	install -m644 ./share/zsh/site-functions/_gh ${DESTDIR}${datadir}/zsh/site-functions/_gh
 
 .PHONY: install-ghx
-install-ghx: bin/ghx
+install-ghx: bin/ghx manpages-ghx completions-ghx
 	install -d ${DESTDIR}${bindir}
 	install -m755 bin/ghx ${DESTDIR}${bindir}/
+	install -d ${DESTDIR}${mandir}/man1
+	install -m644 ./share/man/man1/ghx.1 ./share/man/man1/ghx-*.1 ${DESTDIR}${mandir}/man1/
+	install -d ${DESTDIR}${datadir}/bash-completion/completions
+	install -m644 ./share/bash-completion/completions/ghx ${DESTDIR}${datadir}/bash-completion/completions/ghx
+	install -d ${DESTDIR}${datadir}/fish/vendor_completions.d
+	install -m644 ./share/fish/vendor_completions.d/ghx.fish ${DESTDIR}${datadir}/fish/vendor_completions.d/ghx.fish
+	install -d ${DESTDIR}${datadir}/zsh/site-functions
+	install -m644 ./share/zsh/site-functions/_ghx ${DESTDIR}${datadir}/zsh/site-functions/_ghx
+	install -d ${DESTDIR}${datadir}/zsh/vendor-completions
+	install -m644 ./share/zsh/vendor-completions/_ghx ${DESTDIR}${datadir}/zsh/vendor-completions/_ghx
 
 .PHONY: uninstall
 uninstall:
@@ -115,6 +138,14 @@ uninstall:
 	rm -f ${DESTDIR}${datadir}/bash-completion/completions/gh
 	rm -f ${DESTDIR}${datadir}/fish/vendor_completions.d/gh.fish
 	rm -f ${DESTDIR}${datadir}/zsh/site-functions/_gh
+
+.PHONY: uninstall-ghx
+uninstall-ghx:
+	rm -f ${DESTDIR}${bindir}/ghx ${DESTDIR}${mandir}/man1/ghx.1 ${DESTDIR}${mandir}/man1/ghx-*.1
+	rm -f ${DESTDIR}${datadir}/bash-completion/completions/ghx
+	rm -f ${DESTDIR}${datadir}/fish/vendor_completions.d/ghx.fish
+	rm -f ${DESTDIR}${datadir}/zsh/site-functions/_ghx
+	rm -f ${DESTDIR}${datadir}/zsh/vendor-completions/_ghx
 
 .PHONY: macospkg
 macospkg: manpages completions
