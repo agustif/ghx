@@ -2,7 +2,7 @@
 
 ## ghx fork note
 
-The package-manager and release instructions on this page install regular upstream `gh`, not the `ghx` fork. To build this fork today, use [building and installing ghx from source](install_source.md#building-and-installing-ghx-from-source) until a first-class `ghx` distribution exists.
+The package-manager and release instructions on this page install regular upstream `gh`, not the `ghx` fork. To build this fork today, use [building and installing ghx from source](install_source.md#building-and-installing-ghx-from-source) until a first-class `ghx` distribution exists. The current `ghx` package-channel status is tracked in [ghx vs gh](ghx-vs-gh.md#binary-identity-and-installation).
 
 ## Recommended _(Official)_
 

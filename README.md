@@ -44,6 +44,8 @@ If you are a hubber and are interested in shipping new commands for the CLI, che
 <!-- this anchor is linked to from elsewhere, so avoid renaming it -->
 ## Installation
 
+The OS package-manager links below install upstream `gh`. The `ghx` fork is currently source-install first; see [building and installing ghx from source](docs/install_source.md#building-and-installing-ghx-from-source) and the [package-channel status](docs/ghx-vs-gh.md#binary-identity-and-installation).
+
 ### [macOS](docs/install_macos.md)
 
 - [Homebrew](docs/install_macos.md#homebrew)

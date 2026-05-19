@@ -98,7 +98,8 @@ Issue #56 scaffold:
 - `.goreleaser-ghx.yml` is the fork-specific GoReleaser scaffold for local validation.
 - `.goreleaser.yml` remains the upstream-compatible `gh` release config.
 - The scaffold sets `project_name: ghx`, points the disabled SCM release target at `agustif/ghx`, builds `bin/ghx`, injects `internal/build.Name=ghx`, and emits `ghx_{{ .Version }}_*` archive names.
-- The scaffold intentionally does not define nFPM packages, macOS pkg output, Windows MSI output, signing hooks, generated completions, or generated manpages.
+- Issue #60 extends the scaffold with local-only Linux nFPM metadata plus generated `ghx` manpages and completions for package payloads.
+- The scaffold still does not define macOS pkg output, Windows MSI output, signing hooks, publication hooks, or package repository metadata.
 - The local dry-run command is:
 
 ```bash
@@ -217,6 +218,7 @@ Migration decision:
 
 - Each platform must prove side-by-side installation with upstream `gh`.
 - Upgrade and uninstall behavior is a release gate, not a packaging afterthought.
+- The package-channel gate record is [ghx platform package channels](ghx-platform-package-channels.md).
 
 ### Distribution channels and docs
 
@@ -242,6 +244,7 @@ Migration decision:
 
 - Until a channel is fork-owned, docs must say it installs upstream `gh`, not `ghx`.
 - `ghx` manual publication must not write to upstream-owned docs sites by default.
+- Homebrew and package-manager handoff decisions are tracked in [ghx platform package channels](ghx-platform-package-channels.md).
 
 ### Provenance, signing, and verification
 
