@@ -62,12 +62,11 @@ jobs:
 
             forbidden = %w[
               aurs blobs blob_signs brews chocolateys dockers docker_manifests
-              homebrew_casks kos nfpms nix packages publishers signs snapcrafts
-              scoop sboms winget
+              homebrew_casks kos nix publishers signs snapcrafts scoop sboms winget
             ]
             present = forbidden.select { |key| config.key?(key) }
             unless present.empty?
-              abort("#{ENV.fetch("GORELEASER_CONFIG")} contains publishing/package sections: #{present.join(", ")}")
+              abort("#{ENV.fetch("GORELEASER_CONFIG")} contains publishing/signing sections: #{present.join(", ")}")
             end
           '
 
@@ -79,8 +78,9 @@ jobs:
           ghx release snapshot validation.
 
           This workflow validates the fork-owned GoReleaser snapshot path only.
-          It must not publish GitHub Releases, docs, Homebrew formulae, packages,
-          signing output, attestations, or external artifacts.
+          It must not publish GitHub Releases, docs, Homebrew formulae,
+          package-manager repositories, signing output, attestations, or
+          external artifacts.
           NOTES
 
       - name: Build GoReleaser snapshot

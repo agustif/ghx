@@ -49,7 +49,8 @@ The workflow keeps the release lane non-publishing by design:
 - no secrets or environments are referenced
 - no `id-token` permission is granted
 - `.goreleaser-ghx.yml` must keep `release.disable: true`
-- package and publisher sections are rejected before the snapshot build
+- publisher, signing, external package-channel, and attestation sections are rejected before the snapshot build
+- local package metadata such as nFPM may be validated, but it must not publish package repositories
 - only `dist/ghx_*.tar.gz`, `dist/ghx_*.zip`, and `dist/ghx_*_checksums.txt` are uploaded as GitHub Actions artifacts
 
 ## Local Parity Checks
