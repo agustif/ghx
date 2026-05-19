@@ -159,6 +159,14 @@ Migration decision:
 - `ghx` builds must point at fork release metadata or disable update checks explicitly.
 - A binary built as upstream `gh` must not be silently repointed unless the fork deliberately retires upstream-compatible builds.
 
+Implementation status:
+
+- Runtime `ghx` update checks remap the upstream default `cli/cli` release repository to `agustif/ghx`.
+- Runtime `ghx` update checks use a fork-specific update state file.
+- Runtime `ghx` version links point at `agustif/ghx` release pages.
+- Runtime `ghx` update messages use the `ghx` command name and do not print the upstream `brew upgrade gh` hint.
+- Upstream-compatible `gh` builds keep the upstream release repository, changelog links, and Homebrew hint.
+
 ### Install surfaces, completions, and manpages
 
 Owned by [#59](https://github.com/agustif/ghx/issues/59).

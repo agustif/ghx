@@ -22,6 +22,7 @@ Snapshot used for this page:
 | Issue subissues | No first-class command group in the compared upstream snapshot. | Adds a native subissue command group with JSON output for listings. | `ghx issue subissue list/add/remove/reprioritize`, alias `ghx issue subissues`. |
 | Issue creation parent link | Regular issue creation has no parent issue flag in the compared upstream snapshot. | Can create a new issue as a subissue of an existing issue in the same repo. | `ghx issue create --parent 123 --title "Child" --body-file body.md`. |
 | Issue search fields | `gh issue list --search` does not expose issue-field scoping in the compared upstream snapshot. | Search can be constrained to issue title, body, and comments. | `ghx issue list --search "runner failed" --match body,comments`. |
+| Runtime update and version links | Update checks and changelog links point at `cli/cli`, and Homebrew users can be told to run `brew upgrade gh`. | `ghx` update checks and version links point at `agustif/ghx`; `ghx` does not print the upstream `brew upgrade gh` hint. | `ghx --version`, update notifier output. |
 | Fork documentation | Upstream docs describe regular `gh` development and usage. | Adds fork-specific ADRs, RFCs, plans, research notes, API coverage reports, and operational gap maps. | Start at `docs/ghx.md`. |
 
 ## Compatibility contract
@@ -95,6 +96,24 @@ ghx issue list
 Installing `ghx` does not require replacing upstream `gh`. A machine can still opt into `ghx` as default `gh` by placing a symlink earlier on `PATH`.
 
 Current install caveat: `make install-ghx` installs the fork binary, but fork-specific completions, manpages, and packaged release artifacts are not yet first-class. Package manager instructions in the upstream install docs install regular `gh`, not `ghx`. The execution map for closing these gaps is [first-class ghx release and automation migration](plans/ghx-first-class-release-migration.md).
+
+## Runtime update and version identity
+
+Regular `gh` builds keep the upstream update channel and changelog links:
+
+```sh
+gh --version
+```
+
+When a binary is built as `ghx`, runtime release identity follows the fork:
+
+- updateable `ghx` builds check `agustif/ghx` release metadata when the upstream default update repository is still configured
+- updateable `ghx` builds use their own update state file so recent `gh` checks do not suppress fork release checks
+- `ghx --version` links to `https://github.com/agustif/ghx/releases/...`
+- update notifications say `A new release of ghx is available`
+- `ghx` does not print the upstream Homebrew hint `brew upgrade gh`
+
+Packagers can still override or disable the update repository explicitly. The fork remap only protects the default upstream `cli/cli` setting from leaking into `ghx` builds.
 
 ## Scoped account selection
 
