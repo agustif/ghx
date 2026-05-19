@@ -22,6 +22,9 @@ $ make install-ghx prefix=$HOME/.local
 
 To use it as the default `gh` on a machine, place a `gh` symlink to `ghx` earlier on `PATH`.
 
+The shipped differences between this fork and regular upstream GitHub CLI are tracked in
+[docs/ghx-vs-gh.md](docs/ghx-vs-gh.md).
+
 ![screenshot of gh pr status](https://user-images.githubusercontent.com/98482/84171218-327e7a80-aa40-11ea-8cd1-5177fc2d0e72.png)
 
 GitHub CLI is supported for users on GitHub.com, GitHub Enterprise Cloud, and GitHub Enterprise Server 2.20+ with support for macOS, Windows, and Linux.

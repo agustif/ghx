@@ -42,6 +42,7 @@ Acceptance:
 - shows host, active login, source, repo, remotes, token scopes, and mutation warnings
 - supports `--json`
 - never mutates config unless called through future `ghx ctx bind`
+- updates [ghx vs gh](../ghx-vs-gh.md) when the slice becomes shipped behavior
 
 ## Slice 2: `ghx api explain`
 
@@ -57,6 +58,7 @@ Acceptance:
 - uses pinned spec metadata
 - prints method, path, params, pagination, response shape, previews, and permission notes when known
 - shows raw `ghx api` equivalent
+- updates [ghx vs gh](../ghx-vs-gh.md) when the slice becomes shipped behavior
 
 ## Slice 3: `ghx pr ready`
 
@@ -82,6 +84,7 @@ Acceptance:
 - read-only first
 - supports `--json`
 - lists exact next commands
+- updates [ghx vs gh](../ghx-vs-gh.md) when the slice becomes shipped behavior
 
 ## Slice 4: `ghx pr threads`
 
@@ -97,6 +100,7 @@ Acceptance:
 - shows file, line, author, state, URL, and latest body snippet
 - supports `--json`
 - can feed `ghx pr ready`
+- updates [ghx vs gh](../ghx-vs-gh.md) when the slice becomes shipped behavior
 
 ## Slice 5: `ghx ci doctor`
 
@@ -115,6 +119,7 @@ Acceptance:
 - supports branch, SHA, and PR inputs
 - supports `--json`
 - redacts secrets in logs
+- updates [ghx vs gh](../ghx-vs-gh.md) when the slice becomes shipped behavior
 
 ## Slice 6: `ghx rules explain`
 
@@ -130,3 +135,4 @@ Acceptance:
 - combines rulesets, branch protection, required checks, required deployments, bypass actors, and rule suite evaluations where available
 - supports `--json`
 - no mutation in first slice
+- updates [ghx vs gh](../ghx-vs-gh.md) when the slice becomes shipped behavior

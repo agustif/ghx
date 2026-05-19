@@ -42,6 +42,27 @@
 
    Run `bin\gh version` to check if it worked.
 
+## Building and installing ghx from source
+
+This fork can also build a side-by-side `ghx` binary. The regular source install instructions above build upstream-style `gh`; use these targets when you want the fork binary without replacing `gh`.
+
+**Unix-like systems**
+
+```sh
+$ make bin/ghx
+$ make install-ghx prefix=$HOME/.local
+$ ghx version
+```
+
+**Windows**
+
+```pwsh
+> go run script\build.go bin\ghx.exe
+> bin\ghx version
+```
+
+The current `install-ghx` target installs the binary path only. Fork-specific completions, manpages, packages, and update metadata are still roadmap work.
+
 ## Cross-compiling binaries for different platforms
 
 You can use any platform with Go installed to build a binary that is intended for another platform

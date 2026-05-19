@@ -5,6 +5,10 @@ Date: 2026-05-17
 
 This index collects the fork-specific plans, ADRs, and implementation notes for `ghx`.
 
+## Start here: ghx vs gh
+
+Read [ghx vs gh](ghx-vs-gh.md) first for the shipped behavior contract. The rest of this index includes roadmap and research material, so planned commands should not be treated as available unless they are listed in that comparison page.
+
 ## Product vision
 
 `ghx` is the account-safe, agent-ready GitHub control plane. It should make it obvious which account, host, repo, scopes, rules, checks, and mutation target a command will use, then expose the deeper GitHub platform as composable terminal workflows.
@@ -22,6 +26,7 @@ The near-term PM rule is to ship one useful read-only control-plane slice at a t
 
 ## Core docs
 
+- [ghx vs gh](ghx-vs-gh.md): shipped behavior that intentionally differs from regular upstream GitHub CLI.
 - [Multiple accounts](multiple-accounts.md): upstream multi-account behavior plus `ghx` scoped account selection.
 - [Gap map](ghx-gap-map.md): feature gap map between current `gh`/`ghx` and the deeper GitHub platform surface.
 - [Research index](research/README.md): broad investigation notes and product angle maps before decisions harden.

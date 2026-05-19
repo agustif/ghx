@@ -7,6 +7,9 @@ Date: 2026-05-17
 
 This note records the current release, packaging, update, docs, and compatibility shape of the `ghx` fork so the repo can decide whether `ghx` should stay a local sidecar binary or become a first-class distributable product.
 
+User-facing summary: [ghx vs gh](../ghx-vs-gh.md).
+Execution map: [first-class ghx release and automation migration](../plans/ghx-first-class-release-migration.md).
+
 The central question is not whether `ghx` can be built. It can. The real question is which distribution contract the fork wants to support:
 
 1. local-only sidecar binary

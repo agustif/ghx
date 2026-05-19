@@ -42,3 +42,4 @@ Make `ghx` reliably select the intended GitHub account per command without chang
 - nearest `.ghaccount` beats host-global active account.
 - missing account names produce a clear error and suggested `ghx auth status`.
 - JSON output contains enough fields for agents to verify target identity.
+- [ghx vs gh](../ghx-vs-gh.md) stays updated whenever account resolution behavior changes.

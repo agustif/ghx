@@ -16,6 +16,7 @@ This directory holds implementation plans for the fork-specific `ghx` roadmap.
 | [Agent progress contract](agent-progress-contract.md) | Standardize `0/100`, task trees, and progress logs for agent-friendly commands. |
 | [First delivery slices](first-delivery-slices.md) | Read-only-first plan for `ghx ctx`, PR readiness, review threads, CI doctor, and rules explanation. |
 | [`.ghx/` config directory](ghx-config-directory.md) | Layered project-local config inspired by zsh-style user composition, with safety and trust gates. |
+| [First-class release migration](ghx-first-class-release-migration.md) | Map every release, packaging, update, automation, docs, and verification surface that must be forked or explicitly preserved for `ghx`. |
 
 ## Current order
 
@@ -24,4 +25,5 @@ This directory holds implementation plans for the fork-specific `ghx` roadmap.
 3. PR readiness and review threads.
 4. CI doctor and pending deployments.
 5. Rules, deployments, security inbox.
-6. Extension bundle and workflow companion polish in parallel where it reduces custom work.
+6. First-class release migration gates for side-by-side distribution.
+7. Extension bundle and workflow companion polish in parallel where it reduces custom work.

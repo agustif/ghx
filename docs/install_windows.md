@@ -1,5 +1,9 @@
 # Installing gh on Windows
 
+## ghx fork note
+
+The package-manager and release instructions on this page install regular upstream `gh`, not the `ghx` fork. To build this fork today, use [building and installing ghx from source](install_source.md#building-and-installing-ghx-from-source) until a first-class `ghx` distribution exists.
+
 ## Recommended _(Official)_
 
 ### WinGet
