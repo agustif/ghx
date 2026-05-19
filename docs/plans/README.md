@@ -19,6 +19,7 @@ This directory holds implementation plans for the fork-specific `ghx` roadmap.
 | [First-class release migration](ghx-first-class-release-migration.md) | Map every release, packaging, update, automation, docs, and verification surface that must be forked or explicitly preserved for `ghx`. |
 | [ghx side-by-side migration and rollback runbook](ghx-side-by-side-migration-runbook.md) | Operator-safe sidecar and shadow-mode install, account selection, helper wiring, and rollback steps. |
 | [ghx release operator runbook](ghx-release-operator-runbook.md) | Staging, verification, publication, distribution matrix, and rollback sequence for `ghx` releases. |
+| [ghx release provenance and verification runbook](ghx-release-provenance-runbook.md) | Fork-owned artifact naming, checksum, attestation, staging, and production verification steps for `ghx` releases. |
 
 ## Current order
 
