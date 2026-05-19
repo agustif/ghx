@@ -11,6 +11,11 @@ release:
   disable: true
   name_template: "ghx {{.Version}}"
 
+before:
+  hooks:
+    - make manpages-ghx
+    - make completions-ghx
+
 builds:
   - id: macos
     goos: [darwin]
@@ -46,6 +51,7 @@ archives:
     formats: [tar.gz]
     files:
       - LICENSE
+      - ./share/man/man1/ghx*.1
   - id: macos-archive
     ids: [macos]
     name_template: "ghx_{{ .Version }}_macOS_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
@@ -53,6 +59,7 @@ archives:
     formats: [zip]
     files:
       - LICENSE
+      - ./share/man/man1/ghx*.1
   - id: windows-archive
     ids: [windows]
     name_template: "ghx_{{ .Version }}_windows_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
@@ -60,3 +67,33 @@ archives:
     formats: [zip]
     files:
       - LICENSE
+
+nfpms:
+  - id: linux-packages
+    ids: [linux]
+    package_name: ghx
+    file_name_template: "ghx_{{ .Version }}_linux_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    license: MIT
+    section: utils
+    maintainer: agustif
+    vendor: agustif
+    homepage: https://github.com/agustif/ghx
+    bindir: /usr
+    dependencies:
+      - git
+    description: Maintained GitHub CLI fork that installs side-by-side as ghx.
+    formats:
+      - deb
+      - rpm
+    contents:
+      - src: "./share/man/man1/ghx*.1"
+        dst: "/usr/share/man/man1"
+      - src: "./share/bash-completion/completions/ghx"
+        dst: "/usr/share/bash-completion/completions/ghx"
+      - src: "./share/fish/vendor_completions.d/ghx.fish"
+        dst: "/usr/share/fish/vendor_completions.d/ghx.fish"
+      - src: "./share/zsh/site-functions/_ghx"
+        dst: "/usr/share/zsh/site-functions/_ghx"
+      - src: "./share/zsh/vendor-completions/_ghx"
+        dst: "/usr/share/zsh/vendor-completions/_ghx"
+        packager: deb

@@ -17,6 +17,7 @@ This directory holds implementation plans for the fork-specific `ghx` roadmap.
 | [First delivery slices](first-delivery-slices.md) | Read-only-first plan for `ghx ctx`, PR readiness, review threads, CI doctor, and rules explanation. |
 | [`.ghx/` config directory](ghx-config-directory.md) | Layered project-local config inspired by zsh-style user composition, with safety and trust gates. |
 | [First-class release migration](ghx-first-class-release-migration.md) | Map every release, packaging, update, automation, docs, and verification surface that must be forked or explicitly preserved for `ghx`. |
+| [ghx platform package channels](ghx-platform-package-channels.md) | Define the Linux, macOS, Windows, and package-manager gates for side-by-side `ghx` distribution. |
 | [ghx side-by-side migration and rollback runbook](ghx-side-by-side-migration-runbook.md) | Operator-safe sidecar and shadow-mode install, account selection, helper wiring, and rollback steps. |
 | [ghx release operator runbook](ghx-release-operator-runbook.md) | Staging, verification, publication, distribution matrix, and rollback sequence for `ghx` releases. |
 | [ghx release provenance and verification runbook](ghx-release-provenance-runbook.md) | Fork-owned artifact naming, checksum, attestation, staging, and production verification steps for `ghx` releases. |
@@ -30,5 +31,6 @@ This directory holds implementation plans for the fork-specific `ghx` roadmap.
 4. CI doctor and pending deployments.
 5. Rules, deployments, security inbox.
 6. First-class release migration gates for side-by-side distribution.
-7. Side-by-side migration and release operator runbooks.
-8. Extension bundle and workflow companion polish in parallel where it reduces custom work.
+7. Platform package channel gates.
+8. Side-by-side migration and release operator runbooks.
+9. Extension bundle and workflow companion polish in parallel where it reduces custom work.

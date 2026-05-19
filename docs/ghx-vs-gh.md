@@ -96,7 +96,16 @@ ghx issue list
 
 Installing `ghx` does not require replacing upstream `gh`. A machine can still opt into `ghx` as default `gh` by placing a symlink earlier on `PATH`.
 
-Current install caveat: `make install-ghx` installs the fork binary, fork-owned completions, and fork-owned manpages, but packaged release artifacts are not yet first-class. Package manager instructions in the upstream install docs install regular `gh`, not `ghx`. The execution map for closing these gaps is [first-class ghx release and automation migration](plans/ghx-first-class-release-migration.md).
+Current install caveat: source install covers the `ghx` binary, completions, manpages, and uninstall path. Packaged release artifacts are not yet production-ready. Package manager instructions in the upstream install docs install regular `gh`, not `ghx`. The execution map for closing these gaps is [first-class ghx release and automation migration](plans/ghx-first-class-release-migration.md), with platform gates in [ghx platform package channels](plans/ghx-platform-package-channels.md).
+
+| Channel | Current `ghx` status | Upstream `gh` interference rule |
+| --- | --- | --- |
+| Source install | Available with `make install-ghx`. | Installs only `ghx` binary, manpages, and completions. |
+| Release archives | Local dry-run scaffold emits `ghx_*` archives. | Does not publish or replace upstream `gh` archives. |
+| Linux deb and rpm | Local nFPM metadata exists for snapshot inspection. | Package name and installed paths are `ghx`; no `gh` conflicts or replacements. |
+| macOS pkg | Planned. Current `script/pkgmacos` is upstream `gh` only. | Must use fork-owned payload, package identifier, receipt, signing, and notarization gates. |
+| Windows MSI | Planned. Current WiX project is upstream `gh` only. | Must use fork-owned product metadata, registry keys, upgrade codes, and signing description. |
+| Homebrew | Disabled for `ghx`. Current workflows target formula `gh`. | Must use a fork-owned `ghx` formula or remain unsupported. |
 
 ## Generated reference and manual publishing
 
