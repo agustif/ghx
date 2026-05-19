@@ -284,6 +284,8 @@ Owned by [#69](https://github.com/agustif/ghx/issues/69) and [#70](https://githu
 
 Primary files:
 
+- [ghx release operator runbook](ghx-release-operator-runbook.md)
+- [ghx side-by-side migration and rollback runbook](ghx-side-by-side-migration-runbook.md)
 - future smoke scripts
 - `docs/releasing.md`
 - `docs/release-process-deep-dive.md`
@@ -299,6 +301,13 @@ Migration decision:
 
 - A release is not production-ready until the smoke matrix passes on source install and packaged artifacts.
 - The operator runbook must separate staging release, production release, verification, package publication, and rollback.
+
+Runbook links:
+
+- [#67 side-by-side migration and rollback runbook](https://github.com/agustif/ghx/issues/67)
+- [#69 release smoke test matrix](https://github.com/agustif/ghx/issues/69)
+- [#70 release operator runbook](https://github.com/agustif/ghx/issues/70)
+- Current release docs: [docs/releasing.md](../releasing.md), [docs/release-process-deep-dive.md](../release-process-deep-dive.md)
 
 ## Acceptance
 
