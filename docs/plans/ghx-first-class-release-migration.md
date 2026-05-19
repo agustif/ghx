@@ -93,6 +93,25 @@ Migration decision:
 - Either fork a dedicated `ghx` release config or parameterize the current config with an explicit release product name.
 - Keep any upstream-compatible `gh` build lane separate from the fork release lane.
 
+Issue #56 scaffold:
+
+- `.goreleaser-ghx.yml` is the fork-specific GoReleaser scaffold for local validation.
+- `.goreleaser.yml` remains the upstream-compatible `gh` release config.
+- The scaffold sets `project_name: ghx`, points the disabled SCM release target at `agustif/ghx`, builds `bin/ghx`, injects `internal/build.Name=ghx`, and emits `ghx_{{ .Version }}_*` archive names.
+- The scaffold intentionally does not define nFPM packages, macOS pkg output, Windows MSI output, signing hooks, generated completions, or generated manpages.
+- The local dry-run command is:
+
+```bash
+goreleaser release -f .goreleaser-ghx.yml --snapshot --clean --skip publish,announce --release-notes="$(mktemp)"
+```
+
+Acceptance for #56:
+
+- `goreleaser check -f .goreleaser-ghx.yml` passes.
+- The dry-run command above produces only fork-owned `ghx_*` archives and `bin/ghx` binaries under `dist/`.
+- No command in this issue publishes a release or uploads artifacts.
+- Production publication stays blocked until #57, #58, #60, #61, #62, #65, #69, and #70 decide workflow publication, updater identity, packages, signing, provenance, smoke tests, and the operator runbook.
+
 ### GitHub Actions deployment automation
 
 Owned by [#57](https://github.com/agustif/ghx/issues/57).

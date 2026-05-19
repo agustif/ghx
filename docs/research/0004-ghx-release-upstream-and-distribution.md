@@ -79,6 +79,18 @@ So even before introducing `ghx`, the current release lane is tuned for stable u
 
 Conclusion: the repo does not yet have a `ghx` release lane. It has a `gh` release lane plus a local `ghx` build target.
 
+Issue #56 update on 2026-05-19:
+
+- `.goreleaser-ghx.yml` now exists as a dry-run-only fork release scaffold.
+- It leaves `.goreleaser.yml` unchanged for upstream-compatible `gh` release behavior.
+- It sets `project_name: ghx`, targets disabled SCM release metadata at `agustif/ghx`, builds `bin/ghx`, injects `internal/build.Name=ghx`, and names archives with the `ghx_{{ .Version }}_*` prefix.
+- It does not yet create Linux packages, macOS pkg output, Windows MSI output, generated `ghx` completions, generated `ghx` manpages, signing artifacts, or update-channel metadata.
+- It should be validated with `goreleaser check -f .goreleaser-ghx.yml` and a local dry run:
+
+```bash
+goreleaser release -f .goreleaser-ghx.yml --snapshot --clean --skip publish,announce --release-notes="$(mktemp)"
+```
+
 ### 3. Version, changelog, and updater identity are only partially fork-aware
 
 The command surface is partially rebranded but the release identity is not.
