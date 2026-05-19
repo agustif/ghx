@@ -30,3 +30,20 @@ func Test_run(t *testing.T) {
 		t.Fatal("markdown page corrupted")
 	}
 }
+
+func Test_runWithCommandName(t *testing.T) {
+	dir := t.TempDir()
+	args := []string{"--man-page", "--doc-path", dir, "--command-name", "ghx"}
+	err := run(args)
+	if err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+
+	manPage, err := os.ReadFile(dir + "/ghx-issue-create.1")
+	if err != nil {
+		t.Fatalf("error reading `ghx-issue-create.1`: %v", err)
+	}
+	if !strings.Contains(string(manPage), `\fBghx issue create`) {
+		t.Fatal("ghx man page corrupted")
+	}
+}
