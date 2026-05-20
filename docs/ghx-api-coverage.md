@@ -1,39 +1,58 @@
 # ghx API coverage
 
-Status: manual seed plus reproducible REST count
+Status: generated miner plus curated metadata seed
 Date: 2026-05-20
 
-This report compares the local `ghx` command surface against official GitHub REST and GraphQL surfaces. It is intentionally evidence-shaped so a later `ghx mine github` command can replace it with a generated report.
+This report compares the local `ghx` command surface against official GitHub REST and GraphQL surfaces. `ghx mine github` now generates Markdown or JSON reports from REST OpenAPI, GraphQL introspection, the local Cobra command tree, and the curated `internal/ghapi/rest` metadata seed.
 
 ## Evidence snapshot
 
-- Local command surface: `ghx help` and `pkg/cmd/*` in this checkout.
-- REST surface: `github/rest-api-description` OpenAPI JSON downloaded on 2026-05-19.
+- Local command surface: `ghx mine github` walks the live Cobra tree from this checkout.
+- Generated REST metadata seed: `internal/ghapi/rest/registry.go`.
+- Generated metadata command: `ghx api explain <operation-id>` and `ghx api explain --list`.
+- REST surface: `github/rest-api-description` OpenAPI JSON. The miner defaults to the pinned PR #86 ref and accepts `--rest-openapi` for a file or URL.
 - REST docs version: GitHub REST docs show API version `2026-03-10` as latest on 2026-05-19.
-- GraphQL surface: live `ghx api graphql` introspection on 2026-05-19.
+- GraphQL surface: `ghx mine github --source graphql` can live-introspect a host or read deterministic schema JSON through `--graphql-schema`.
 - Official CLI reference: `https://cli.github.com/manual/gh`.
-- Repro command: `script/ghx-rest-coverage-summary /tmp/github-rest-openapi.json`.
+- Repro commands:
+  - `ghx mine github --source rest --format md --rest-openapi /tmp/github-rest-openapi.json`
+  - `ghx mine github --source graphql --format json --graphql-schema /tmp/github-graphql-schema.json`
+  - `script/ghx-rest-coverage-summary /tmp/github-rest-openapi.json`
 
 ## Current quantitative gap
 
-Vanilla `gh` has broad raw API reachability through `gh api`, including the
-GraphQL endpoint, but it does not expose generated operation metadata, coverage
-states, or operation-to-command mapping. That is the gap `ghx` is starting to
-close.
+Regular `gh` has broad raw API reachability through `gh api`, including the
+GraphQL endpoint. The explicit gap is different: regular `gh` does not expose
+a generated REST operation registry, source checksums, coverage states,
+parameter metadata, pagination hints, GraphQL schema coverage rows, or
+operation-to-command mapping. `ghx` keeps the raw API escape hatch and now
+adds generated coverage reports around it.
 
-| Coverage question | Vanilla `gh` | Current `ghx` | Gap to full explicit coverage |
+| Coverage question | Regular `gh` explicit metadata | Current `ghx` explicit metadata | Gap to full explicit metadata |
 | --- | ---: | ---: | ---: |
 | Raw REST reachability through `api` | broad escape hatch | broad escape hatch | not the target |
 | Raw GraphQL reachability through `api graphql` | broad escape hatch | broad escape hatch | not the target |
+| REST operations inventoried by generated report | 0 tracked | 1186 of 1186 (100%) | 0 operation inventory gap |
 | REST operations with explicit generated metadata | 0 tracked | 13 of 1186 (1.1%) | 1173 operations (98.9%) |
 | REST operations with coverage state and proposed command | 0 tracked | 13 of 1186 (1.1%) | 1173 operations (98.9%) |
-| GraphQL schema snapshot validation | 0 tracked | 0 tracked | full schema validation remains |
+| GraphQL root query and mutation inventory | 0 tracked | generated from schema | explicit coverage remains 0% until a GraphQL registry lands |
 
 The first `ghx` metadata slice is intentionally small: Actions pending
 deployments, hosted runners, workflow jobs and artifacts, checks list/rerun,
 and deployments/statuses. The next useful milestone is not more hand-written
 rows, but a generated coverage report that marks every REST operation as
 `first-class`, `thin`, `raw-api`, or `missing`.
+
+Coverage state means explicit local workflow coverage, not raw endpoint
+reachability:
+
+- `first-class`: a purpose-built `ghx` command covers the workflow.
+- `thin`: an existing command partially covers the operation but does not expose
+  the full agent or operator workflow.
+- `raw-api`: `ghx api explain` can show the operation and raw command, but no
+  first-class workflow command exists.
+- `missing`: the operation is known to the generated report, but no local
+  workflow command or reviewed raw-only decision exists yet.
 
 High-volume REST tags from the OpenAPI snapshot:
 
@@ -97,25 +116,33 @@ High-volume REST tags from the OpenAPI snapshot:
 
 ## Output contract for generated coverage
 
-Future generated reports should keep these columns stable:
+`ghx mine github` emits a summary report with optional detail rows. JSON output
+keeps these top-level objects stable:
 
-- source category
-- operation id or GraphQL type and field
-- API version or schema snapshot
-- local command coverage
-- generated proxy package
-- coverage state: `first-class`, `thin`, `raw-api`, `missing`
-- permission and scope notes
-- pagination style
-- source URL
-- proposed ghx command
+- `commands`: local Cobra command inventory, including command path, runnable
+  status, hidden/deprecated flags, aliases, and JSON fields.
+- `rest`: REST OpenAPI inventory merged with `internal/ghapi/rest` coverage
+  metadata. Rows include `operationId`, `method`, `path`, `tag`, `summary`,
+  `docsUrl`, `coverageState`, `registered`, `localCommand`, `proposedCommand`,
+  `rawCommand`, `pagination`, and notes.
+- `graphql`: GraphQL schema inventory for root query and mutation fields. Rows
+  include `coordinate`, `parentType`, `name`, `kind`, `description`,
+  `returnType`, `args`, `deprecated`, `coverageState`, `proposedCommand`, and
+  `rawCommand`.
 
-## Generator target
+The nested `rest` summary also reports total operation count, matching row
+count, explicit metadata count, remaining explicit metadata gap, state counts,
+and tag counts. The nested `graphql` summary reports host, schema hash, root
+type names, type counts, field counts, deprecated field count, state counts,
+and explicit coverage percentage.
 
-Future command:
+## Generator commands
 
 ```sh
 ghx mine github --source rest --format md > docs/ghx-api-coverage.md
+ghx mine github --source rest --format json --rest-openapi /tmp/github-rest-openapi.json
+ghx mine github --source graphql --format json --graphql-schema /tmp/github-graphql-schema.json
+ghx mine github --source all --format md --detail --limit 100
 ```
 
 The generator should compare official GitHub API operations against:

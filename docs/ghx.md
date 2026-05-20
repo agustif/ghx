@@ -33,7 +33,7 @@ The near-term PM rule is to ship one useful read-only control-plane slice at a t
 - [RFC index](rfcs/README.md): larger implementation proposals with rollout and validation plans.
 - [ADR index](adr/README.md): accepted architecture decisions for the fork.
 - [Plan index](plans/README.md): implementation plans and sequencing.
-- [API coverage](ghx-api-coverage.md): placeholder for generated REST/GraphQL coverage reports.
+- [API coverage](ghx-api-coverage.md): generated REST/GraphQL coverage reports backed by `ghx mine github` and the first REST metadata seed.
 - [Official surface report](ghx-official-surface-report.md): placeholder for generated product/docs gap reports.
 - [Extension bundle](ghx-extension-bundle.md): curated extension catalog and wrapper posture.
 - [Agent workflows](ghx-agent-workflows.md): contributor and agent guide for progress logs, JSON, screenshots, and collaboration-safe command patterns.

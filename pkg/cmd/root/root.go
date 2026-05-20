@@ -30,6 +30,7 @@ import (
 	issueCmd "github.com/cli/cli/v2/pkg/cmd/issue"
 	labelCmd "github.com/cli/cli/v2/pkg/cmd/label"
 	licensesCmd "github.com/cli/cli/v2/pkg/cmd/licenses"
+	mineCmd "github.com/cli/cli/v2/pkg/cmd/mine"
 	orgCmd "github.com/cli/cli/v2/pkg/cmd/org"
 	prCmd "github.com/cli/cli/v2/pkg/cmd/pr"
 	previewCmd "github.com/cli/cli/v2/pkg/cmd/preview"
@@ -179,6 +180,7 @@ func NewCmdRoot(f *cmdutil.Factory, telemetry ghtelemetry.CommandRecorder, versi
 	cmd.AddCommand(repoCmd.NewCmdRepo(&repoResolvingCmdFactory))
 	cmd.AddCommand(rulesetCmd.NewCmdRuleset(&repoResolvingCmdFactory))
 	cmd.AddCommand(checksCmd.NewCmdChecks(&repoResolvingCmdFactory))
+	cmd.AddCommand(mineCmd.NewCmdMine(&repoResolvingCmdFactory))
 	cmd.AddCommand(runCmd.NewCmdRun(&repoResolvingCmdFactory))
 	cmd.AddCommand(workflowCmd.NewCmdWorkflow(&repoResolvingCmdFactory))
 	cmd.AddCommand(labelCmd.NewCmdLabel(&repoResolvingCmdFactory))
