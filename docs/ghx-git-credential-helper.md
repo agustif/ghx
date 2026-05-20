@@ -22,6 +22,10 @@ Configure one host:
 ghx auth setup-git --hostname github.com
 ```
 
+Successful `ghx auth switch` calls also sync the HTTPS credential helper for the selected host to the running `ghx`
+binary. This keeps repo-scoped account choices and plain `git fetch` / `git push` on the same resolver without requiring
+a separate setup step after every account switch.
+
 Configure a host that is not currently in `ghx auth status`:
 
 ```sh
@@ -63,7 +67,9 @@ If any host-specific output points at `gh auth git-credential`, git operations f
 - `gh` and `ghx` share auth storage. Do not expect separate login state unless the future config directory work explicitly changes that contract.
 - Explicit token environment variables such as `GH_TOKEN` and `GITHUB_TOKEN` still take precedence over stored credentials.
 - `gh auth setup-git` and `ghx auth setup-git` both write git config. The last setup command for a host controls which helper git invokes for that host.
-- `ghx auth switch` changes selected accounts inside `ghx`; it does not rewrite git config by itself.
+- `ghx auth switch` changes selected accounts inside `ghx` and best-effort syncs the host-specific HTTPS git credential
+  helper to the running `ghx` binary.
+- SSH remotes still use SSH keys, not OAuth tokens. Use HTTPS remotes when account selection must follow `ghx`.
 - Local repository git config can override global config. Inspect local config too if a single repository behaves differently.
 
 ## Rollback

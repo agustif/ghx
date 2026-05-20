@@ -8,19 +8,25 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/pkg/cmd/auth/shared"
+	"github.com/cli/cli/v2/pkg/cmd/auth/shared/gitcredentials"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/spf13/cobra"
 )
 
+type gitCredentialsConfigurer interface {
+	ConfigureOurs(hostname string) error
+}
+
 type SwitchOptions struct {
-	IO       *iostreams.IOStreams
-	Config   func() (gh.Config, error)
-	Prompter shared.Prompt
-	Hostname string
-	Username string
-	Scope    string
-	Selector string
+	IO                      *iostreams.IOStreams
+	Config                  func() (gh.Config, error)
+	Prompter                shared.Prompt
+	CredentialsHelperConfig gitCredentialsConfigurer
+	Hostname                string
+	Username                string
+	Scope                   string
+	Selector                string
 }
 
 func NewCmdSwitch(f *cmdutil.Factory, runF func(*SwitchOptions) error) *cobra.Command {
@@ -65,6 +71,10 @@ func NewCmdSwitch(f *cmdutil.Factory, runF func(*SwitchOptions) error) *cobra.Co
 		RunE: func(c *cobra.Command, args []string) error {
 			if runF != nil {
 				return runF(&opts)
+			}
+			opts.CredentialsHelperConfig = &gitcredentials.HelperConfig{
+				SelfExecutablePath: f.ExecutablePath,
+				GitClient:          f.GitClient,
 			}
 
 			return switchRun(&opts)
@@ -187,6 +197,7 @@ func switchRun(opts *SwitchOptions) error {
 
 		fmt.Fprintf(opts.IO.ErrOut, "%s Set %s account for %s to %s\n",
 			cs.SuccessIcon(), opts.Scope, hostname, cs.Bold(username))
+		syncGitCredentialHelper(opts, hostname)
 
 		return nil
 	}
@@ -200,6 +211,23 @@ func switchRun(opts *SwitchOptions) error {
 
 	fmt.Fprintf(opts.IO.ErrOut, "%s Switched active account for %s to %s\n",
 		cs.SuccessIcon(), hostname, cs.Bold(username))
+	syncGitCredentialHelper(opts, hostname)
 
 	return nil
+}
+
+func syncGitCredentialHelper(opts *SwitchOptions, hostname string) {
+	if opts.CredentialsHelperConfig == nil {
+		return
+	}
+
+	cs := opts.IO.ColorScheme()
+	if err := opts.CredentialsHelperConfig.ConfigureOurs(hostname); err != nil {
+		fmt.Fprintf(opts.IO.ErrOut, "%s Could not sync git credential helper for %s: %s\n",
+			cs.WarningIcon(), hostname, err)
+		return
+	}
+
+	fmt.Fprintf(opts.IO.ErrOut, "%s Synced git credential helper for %s\n",
+		cs.SuccessIcon(), hostname)
 }

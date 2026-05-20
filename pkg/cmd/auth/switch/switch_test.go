@@ -11,6 +11,7 @@ import (
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/keyring"
 	"github.com/cli/cli/v2/internal/prompter"
+	"github.com/cli/cli/v2/pkg/cmd/auth/shared/gitcredentials"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/google/shlex"
@@ -486,4 +487,37 @@ func TestSwitchRunCwdScopeDoesNotChangeGlobalActiveUser(t *testing.T) {
 	require.Contains(t, configBuf.String(), "inactive-user")
 	require.Contains(t, stderr.String(), "✓ Set cwd account for github.com to inactive-user")
 	require.Equal(t, "github.com:\n    git_protocol: ssh\n    users:\n        inactive-user:\n        active-user:\n    user: active-user\n", hostsBuf.String())
+}
+
+func TestSwitchRunCwdScopeSyncsGitCredentialHelper(t *testing.T) {
+	cfg, _ := config.NewIsolatedTestConfig(t)
+	authCfg := cfg.Authentication()
+	_, err := authCfg.Login("github.com", "inactive-user", "inactive-user-token", "https", true)
+	require.NoError(t, err)
+	_, err = authCfg.Login("github.com", "active-user", "active-user-token", "https", true)
+	require.NoError(t, err)
+
+	helperConfig := &gitcredentials.FakeHelperConfig{
+		SelfExecutablePath: "/path/to/ghx",
+		Helpers:            map[string]gitcredentials.Helper{},
+	}
+	ios, _, _, stderr := iostreams.Test()
+	opts := SwitchOptions{
+		Config: func() (gh.Config, error) {
+			return cfg, nil
+		},
+		IO:                      ios,
+		CredentialsHelperConfig: helperConfig,
+		Hostname:                "github.com",
+		Username:                "inactive-user",
+		Scope:                   "cwd",
+		Selector:                t.TempDir(),
+	}
+
+	err = switchRun(&opts)
+	require.NoError(t, err)
+
+	require.Equal(t, "!/path/to/ghx auth git-credential", helperConfig.Helpers["credential.https://github.com.helper"].Cmd)
+	require.Equal(t, "!/path/to/ghx auth git-credential", helperConfig.Helpers["credential.https://gist.github.com.helper"].Cmd)
+	require.Contains(t, stderr.String(), "✓ Synced git credential helper for github.com")
 }
