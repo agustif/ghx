@@ -41,3 +41,9 @@ This plan makes CI operations inspectable before adding high-risk rerun, approva
 - `go test ./pkg/cmd/pr/checks/...`
 - `go test ./api/...`
 - Manual smoke with a repository that has a failed Actions run and an app-owned check.
+
+## Implementation Note
+
+- First CLI slice adds `gh checks inventory` for read-only check inventory across open PRs or one PR.
+- `gh checks rerun --dry-run` plans exact check-run rerequest targets and emits commands without mutating remote state.
+- Deployment environments, deployment timelines, runners, storage reports, and external provider-specific reruns remain separate follow-up slices after check identity is stable.

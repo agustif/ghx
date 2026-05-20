@@ -37,3 +37,38 @@ This plan makes ghx safer for long-running agent workflows that need durable sta
 - Unit tests for command output contracts and redaction.
 - Manual smoke for body-file flows using stdin.
 - Manual smoke for webhook delivery listing against a repo with hooks.
+
+## Worker D implementation pass
+
+Status: partial implementation landed in scoped packages only.
+
+Implemented command surfaces:
+
+| Issue | Surface | Status |
+| --- | --- | --- |
+| https://github.com/agustif/ghx/issues/49 | `gh issue create --body-literal` | Literal body flag added alongside existing `--body-file -` support. |
+| https://github.com/agustif/ghx/issues/49 | `gh issue comment --body-literal` | Literal issue comment body flag added; keeps editor/web/delete mutual exclusion. |
+| https://github.com/agustif/ghx/issues/49 | `gh issue edit --body-literal` | Literal issue edit body flag added; mutually exclusive with `--body` and `--body-file`. |
+| https://github.com/agustif/ghx/issues/49 | Inline body warning | TTY warning for inline body text containing newlines, backticks, or `$(`; docs and examples prefer `--body-file -`. |
+| https://github.com/agustif/ghx/issues/22 | `gh issue create --dry-run` | Safe create preview that prints the issue payload and sends no mutation. |
+
+Existing coverage verified:
+
+| Issue | Surface | Status |
+| --- | --- | --- |
+| https://github.com/agustif/ghx/issues/49 | `gh issue list --search "..." --match body,comments` | Already present. Focused tests kept this path covered. |
+| https://github.com/agustif/ghx/issues/47 | `gh agent-task list --json ...` and `gh agent-task view --json ...` | Existing JSON-friendly agent task surfaces remain the current handoff base. |
+
+Follow-up nodes:
+
+1. Mirror `--body-literal` onto PR comment/create paths in a PR-owned lane.
+2. Add `gh agent-task handoff` only after agreeing whether it belongs under `agent-task` or a new top-level `agent` control-plane command.
+3. Implement webhook delivery diagnostics for https://github.com/agustif/ghx/issues/45 in a hooks-owned lane because a top-level `hooks` command crosses this worker boundary.
+4. Implement Projects v2 board status and sync dry-run for https://github.com/agustif/ghx/issues/46 in a board/project-owned lane.
+5. Implement `ghx script run` for https://github.com/agustif/ghx/issues/48 only after the command-recording artifact and redaction contract are finalized.
+
+Validation run:
+
+```bash
+go test ./pkg/cmd/issue/shared ./pkg/cmd/issue/create ./pkg/cmd/issue/comment ./pkg/cmd/issue/edit ./pkg/cmd/issue/list
+```

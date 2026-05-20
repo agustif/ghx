@@ -50,6 +50,7 @@ func NewCmdEdit(f *cmdutil.Factory, runF func(*EditOptions) error) *cobra.Comman
 	}
 
 	var bodyFile string
+	var bodyLiteral string
 	var removeMilestone bool
 
 	cmd := &cobra.Command{
@@ -75,6 +76,7 @@ func NewCmdEdit(f *cmdutil.Factory, runF func(*EditOptions) error) *cobra.Comman
 			$ gh issue edit 23 --milestone "Version 1"
 			$ gh issue edit 23 --remove-milestone
 			$ gh issue edit 23 --body-file body.txt
+			$ gh issue edit 23 --body-literal "Use gh issue list --match body"
 			$ gh issue edit 23 34 --add-label "help wanted"
 		`),
 		Args: cobra.MinimumNArgs(1),
@@ -100,22 +102,29 @@ func NewCmdEdit(f *cmdutil.Factory, runF func(*EditOptions) error) *cobra.Comman
 
 			bodyProvided := flags.Changed("body")
 			bodyFileProvided := bodyFile != ""
+			bodyLiteralProvided := flags.Changed("body-literal")
 
 			if err := cmdutil.MutuallyExclusive(
-				"specify only one of `--body` or `--body-file`",
+				"specify only one of `--body`, `--body-file`, or `--body-literal`",
 				bodyProvided,
 				bodyFileProvided,
+				bodyLiteralProvided,
 			); err != nil {
 				return err
 			}
-			if bodyProvided || bodyFileProvided {
+			if bodyProvided || bodyFileProvided || bodyLiteralProvided {
 				opts.Editable.Body.Edited = true
-				if bodyFileProvided {
+				switch {
+				case bodyFileProvided:
 					b, err := cmdutil.ReadFile(bodyFile, opts.IO.In)
 					if err != nil {
 						return err
 					}
 					opts.Editable.Body.Value = string(b)
+				case bodyLiteralProvided:
+					opts.Editable.Body.Value = bodyLiteral
+				case bodyProvided:
+					shared.WarnInlineBodyRisk(opts.IO, opts.Editable.Body.Value)
 				}
 			}
 
@@ -171,6 +180,7 @@ func NewCmdEdit(f *cmdutil.Factory, runF func(*EditOptions) error) *cobra.Comman
 	cmd.Flags().StringVarP(&opts.Editable.Title.Value, "title", "t", "", "Set the new title.")
 	cmd.Flags().StringVarP(&opts.Editable.Body.Value, "body", "b", "", "Set the new body.")
 	cmd.Flags().StringVarP(&bodyFile, "body-file", "F", "", "Read body text from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().StringVar(&bodyLiteral, "body-literal", "", "Supply a literal body value after shell parsing")
 	cmd.Flags().StringSliceVar(&opts.Editable.Assignees.Add, "add-assignee", nil, "Add assigned users by their `login`. Use \"@me\" to assign yourself, or \"@copilot\" to assign Copilot.")
 	cmd.Flags().StringSliceVar(&opts.Editable.Assignees.Remove, "remove-assignee", nil, "Remove assigned users by their `login`. Use \"@me\" to unassign yourself, or \"@copilot\" to unassign Copilot.")
 	cmd.Flags().StringSliceVar(&opts.Editable.Labels.Add, "add-label", nil, "Add labels by `name`")

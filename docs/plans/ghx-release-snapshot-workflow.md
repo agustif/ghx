@@ -3,6 +3,7 @@
 Status: implemented for review
 Owner issue: [#57](https://github.com/agustif/ghx/issues/57)
 Workflow: `.github/workflows/ghx-release-snapshot.yml`
+Related workflow: `.github/workflows/ghx-release-readiness.yml`
 
 ## Goal
 
@@ -68,3 +69,7 @@ make smoke-ghx-release
 ## Remaining Production Work
 
 Production release automation remains blocked until separate release slices decide fork-owned publication, signing, package-manager channels, provenance, updater identity, and operator approval rules.
+
+For a stronger no-publish gate that also inspects deb and rpm package payloads,
+use the [production release readiness](ghx-production-release-readiness.md)
+workflow and scripts.

@@ -37,3 +37,9 @@ This plan turns the merge-readiness roadmap into a small stack of read-only comm
 - `go test ./pkg/cmd/pr/...`
 - `go test ./api/...`
 - Manual smoke against `agustif/ghx` with a PR that has no checks and a PR with review or policy blockers.
+
+## Implementation Note
+
+- First CLI slice uses `gh pr gate explain` for the read-only merge cockpit because upstream `gh pr ready` already mutates draft state by marking a PR ready for review.
+- The JSON report includes account, repository, PR summary, ready boolean, merge state, review decision, check counts, merge queue booleans, blockers, and next actions.
+- Detailed unresolved threads, full ruleset matching, and merge queue watch remain separate follow-up slices.

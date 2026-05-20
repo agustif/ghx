@@ -98,6 +98,24 @@ func TestNewCmdComment(t *testing.T) {
 			wantsErr: false,
 		},
 		{
+			name:  "body literal",
+			input: "1 --body-literal 'literal `code` body'",
+			output: shared.CommentableOptions{
+				Interactive: false,
+				InputType:   shared.InputTypeInline,
+				Body:        "literal `code` body",
+			},
+			isTTY:    true,
+			wantsErr: false,
+		},
+		{
+			name:     "body literal and body-file flags",
+			input:    "1 --body-literal literal --body-file 'test-file.txt'",
+			output:   shared.CommentableOptions{},
+			isTTY:    true,
+			wantsErr: true,
+		},
+		{
 			name:  "editor flag",
 			input: "1 --editor",
 			output: shared.CommentableOptions{

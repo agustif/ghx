@@ -7,6 +7,7 @@ Parent epic: [#2](https://github.com/agustif/ghx/issues/2)
 Expanded slice: [#5](https://github.com/agustif/ghx/issues/5)
 Related research: [0004](../research/0004-ghx-release-upstream-and-distribution.md)
 Related audit: [ghx workflow automation audit](ghx-workflow-automation-audit.md)
+Readiness gate: [ghx production release readiness](ghx-production-release-readiness.md)
 Shipped behavior contract: [ghx vs gh](../ghx-vs-gh.md)
 
 ## Goal
@@ -219,6 +220,7 @@ Migration decision:
 - Each platform must prove side-by-side installation with upstream `gh`.
 - Upgrade and uninstall behavior is a release gate, not a packaging afterthought.
 - The package-channel gate record is [ghx platform package channels](ghx-platform-package-channels.md).
+- The secret-free production readiness gate is [ghx production release readiness](ghx-production-release-readiness.md).
 
 ### Distribution channels and docs
 
@@ -245,6 +247,7 @@ Migration decision:
 - Until a channel is fork-owned, docs must say it installs upstream `gh`, not `ghx`.
 - `ghx` manual publication must not write to upstream-owned docs sites by default.
 - Homebrew and package-manager handoff decisions are tracked in [ghx platform package channels](ghx-platform-package-channels.md).
+- Package-channel templates live under [packaging/ghx](../../packaging/ghx/README.md) and must be filled before any channel is advertised.
 
 ### Provenance, signing, and verification
 

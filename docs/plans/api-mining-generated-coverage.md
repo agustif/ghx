@@ -1,6 +1,6 @@
 # API mining and generated coverage automation
 
-Status: draft implementation plan
+Status: partial implementation
 Epic: https://github.com/agustif/ghx/issues/20
 Branch: `af/plan-api-mining-generated-coverage`
 
@@ -25,6 +25,76 @@ This plan turns the manual REST/OpenAPI and GraphQL mining into repeatable local
 5. Pilot generated REST adapters on a narrow Actions/Checks/Deployments subset.
 6. Add CI drift detection once generated output is stable and reviewable.
 
+## Implemented slice: `ghx api explain`
+
+Worker C added the first concrete metadata-backed explain surface without adding
+a giant generated client:
+
+- `internal/ghapi/rest` contains a curated generated-operation registry seeded
+  from `github/rest-api-description`.
+- `pkg/cmd/api` registers `ghx api explain <operation-id>` and `ghx api explain
+  --list`.
+- Explain output includes method, path, params, scopes or permission notes,
+  pagination, source, docs URL, coverage state, proposed command, and the raw
+  `ghx api` escape hatch.
+- JSON output is field-selected through the existing `--json`, `--jq`, and
+  `--template` command contract.
+
+Current quantitative gap:
+
+| Metric | Value |
+| --- | ---: |
+| REST operations in current OpenAPI snapshot | 1186 |
+| ghx operations with explicit generated metadata | 13 |
+| Explicit REST metadata coverage | 1.1% |
+| Remaining explicit REST metadata gap | 1173 |
+| GraphQL schema validation coverage | 0% |
+
+Reproduce the REST denominator and top tags with:
+
+```sh
+script/ghx-rest-coverage-summary /tmp/github-rest-openapi.json
+```
+
+Pinned REST source used for this slice:
+
+| Field | Value |
+| --- | --- |
+| Source | `github/rest-api-description` |
+| Ref | `133d385dfbee06825d4d4136a82dd2b4c79813ba` |
+| URL | `https://raw.githubusercontent.com/github/rest-api-description/133d385dfbee06825d4d4136a82dd2b4c79813ba/descriptions/api.github.com/api.github.com.json` |
+| Checksum | `sha256:93b14ec8053fde77ac78837e73db9346e3f8802fb4bf4b801ff4269dad89c4ca` |
+| Runtime API version | `2022-11-28` |
+
+Seeded operations for the first Actions, checks, and deployments subset:
+
+| Operation id | Coverage state | Proposed command |
+| --- | --- | --- |
+| `actions/get-pending-deployments-for-run` | `raw-api` | `ghx env pending` |
+| `actions/get-hosted-runners-limits-for-org` | `missing` | `ghx runners capacity` |
+| `actions/list-hosted-runners-for-org` | `missing` | `ghx runners status` |
+| `actions/list-jobs-for-workflow-run` | `thin` | `ghx checks inventory` |
+| `actions/list-workflow-run-artifacts` | `thin` | `ghx actions storage report` |
+| `actions/review-pending-deployments-for-run` | `raw-api` | `ghx env approve`, `ghx env reject` |
+| `checks/list-for-ref` | `thin` | `ghx pr gate explain`, `ghx checks inventory` |
+| `checks/rerequest-run` | `raw-api` | `ghx checks rerun --dry-run` |
+| `checks/rerequest-suite` | `raw-api` | `ghx checks rerun --dry-run` |
+| `repos/create-deployment-status` | `raw-api` | `ghx deploy status` |
+| `repos/get-deployment` | `raw-api` | `ghx deploy timeline` |
+| `repos/list-deployment-statuses` | `raw-api` | `ghx deploy timeline` |
+| `repos/list-deployments` | `raw-api` | `ghx deploy timeline` |
+
+Issue coverage:
+
+| Issue | Coverage from this slice | Remaining work |
+| --- | --- | --- |
+| https://github.com/agustif/ghx/issues/20 | Adds the first reusable API metadata substrate and explain surface. | Add full mining command and drift workflow. |
+| https://github.com/agustif/ghx/issues/35 | Pins a source ref/checksum and exposes machine-readable coverage for a focused REST subset. | Generate the full REST coverage report from a pinned snapshot. |
+| https://github.com/agustif/ghx/issues/36 | No GraphQL mutation in this slice. | Add schema snapshot and curated operation validation. |
+| https://github.com/agustif/ghx/issues/37 | Implements `gh api explain <operation-id>` with JSON and list output. | Expand generated metadata as more operations are mined. |
+| https://github.com/agustif/ghx/issues/38 | Source ref and checksum are present for future drift comparison. | Add scheduled drift workflow and reviewable snapshots. |
+| https://github.com/agustif/ghx/issues/39 | Seeds Actions, checks, and deployments metadata without touching handwritten commands. | Add typed adapter pilot after metadata review. |
+
 ## Acceptance
 
 - Generated reports reproduce `docs/ghx-api-coverage.md` shape with stable columns.
@@ -34,6 +104,7 @@ This plan turns the manual REST/OpenAPI and GraphQL mining into repeatable local
 
 ## Validation
 
+- `go test ./internal/ghapi/rest ./pkg/cmd/api`
 - `go test ./internal/...`
 - `go test ./api/...`
 - Generated coverage command against the pinned REST snapshot.

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
@@ -49,6 +50,7 @@ type CreateOptions struct {
 	Milestone string
 	Template  string
 	Parent    string
+	DryRun    bool
 }
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
@@ -63,6 +65,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	}
 
 	var bodyFile string
+	var bodyLiteral string
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -86,6 +89,9 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			$ gh issue create --assignee "@copilot"
 			$ gh issue create --project "Roadmap"
 			$ gh issue create --parent 123 --title "Child work" --body "Details"
+			$ gh issue create --title "Copy-safe report" --body-file -
+			$ gh issue create --title "Literal report" --body-literal "Use gh issue list --match body"
+			$ gh issue create --title "Preview payload" --body-file issue.md --dry-run
 			$ gh issue create --template "Bug Report"
 		`),
 		Args:    cmdutil.NoArgsQuoteReminder,
@@ -102,22 +108,24 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			}
 
 			titleProvided := cmd.Flags().Changed("title")
-			bodyProvided := cmd.Flags().Changed("body")
-			if bodyFile != "" {
-				b, err := cmdutil.ReadFile(bodyFile, opts.IO.In)
-				if err != nil {
-					return err
-				}
-				opts.Body = string(b)
-				bodyProvided = true
+			body, bodyProvided, err := issueShared.ResolveBodyFlags(cmd, opts.IO, opts.Body, bodyFile, bodyLiteral)
+			if err != nil {
+				return err
+			}
+			if bodyProvided {
+				opts.Body = body
 			}
 
 			if !opts.IO.CanPrompt() && opts.RecoverFile != "" {
 				return cmdutil.FlagErrorf("`--recover` only supported when running interactively")
 			}
 
+			if opts.DryRun && opts.WebMode {
+				return cmdutil.FlagErrorf("specify only one of `--dry-run` or `--web`")
+			}
+
 			if opts.Template != "" && bodyProvided {
-				return errors.New("`--template` is not supported when using `--body` or `--body-file`")
+				return errors.New("`--template` is not supported when using `--body`, `--body-file`, or `--body-literal`")
 			}
 
 			opts.Interactive = !opts.EditorMode && !(titleProvided && bodyProvided)
@@ -136,6 +144,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	cmd.Flags().StringVarP(&opts.Title, "title", "t", "", "Supply a title. Will prompt for one otherwise.")
 	cmd.Flags().StringVarP(&opts.Body, "body", "b", "", "Supply a body. Will prompt for one otherwise.")
 	cmd.Flags().StringVarP(&bodyFile, "body-file", "F", "", "Read body text from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().StringVar(&bodyLiteral, "body-literal", "", "Supply a literal body value after shell parsing")
 	cmd.Flags().BoolVarP(&opts.EditorMode, "editor", "e", false, "Skip prompts and open the text editor to write the title and body in. The first line is the title and the remaining text is the body.")
 	cmd.Flags().BoolVarP(&opts.WebMode, "web", "w", false, "Open the browser to create an issue")
 	cmd.Flags().StringSliceVarP(&opts.Assignees, "assignee", "a", nil, "Assign people by their `login`. Use \"@me\" to self-assign.")
@@ -145,6 +154,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	cmd.Flags().StringVar(&opts.Parent, "parent", "", "Create the issue as a subissue of another issue by number or URL")
 	cmd.Flags().StringVar(&opts.RecoverFile, "recover", "", "Recover input from a failed run of create")
 	cmd.Flags().StringVarP(&opts.Template, "template", "T", "", "Template `name` to use as starting body text")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print the issue creation payload without creating the issue")
 
 	return cmd
 }
@@ -364,6 +374,10 @@ func createRun(opts *CreateOptions) (err error) {
 		}
 		return opts.Browser.Browse(openURL)
 	} else if action == prShared.SubmitAction {
+		if opts.DryRun {
+			return printIssueCreateDryRun(opts, baseRepo, tb, templateNameForSubmit)
+		}
+
 		params := map[string]interface{}{
 			"title": tb.Title,
 			"body":  tb.Body,
@@ -397,6 +411,47 @@ func createRun(opts *CreateOptions) (err error) {
 	}
 
 	return
+}
+
+func printIssueCreateDryRun(opts *CreateOptions, baseRepo ghrepo.Interface, tb prShared.IssueMetadataState, templateNameForSubmit string) error {
+	fmt.Fprintf(opts.IO.Out, "Would create issue in %s\n\n", ghrepo.FullName(baseRepo))
+	fmt.Fprintf(opts.IO.Out, "title: %s\n", tb.Title)
+	if tb.Body != "" {
+		fmt.Fprintf(opts.IO.Out, "body: %s\n", singleLinePreview(tb.Body))
+	} else {
+		fmt.Fprintln(opts.IO.Out, "body: <empty>")
+	}
+	if opts.Parent != "" {
+		fmt.Fprintf(opts.IO.Out, "parent: %s\n", opts.Parent)
+	}
+	if templateNameForSubmit != "" {
+		fmt.Fprintf(opts.IO.Out, "template: %s\n", templateNameForSubmit)
+	}
+	if len(tb.Labels) > 0 {
+		fmt.Fprintf(opts.IO.Out, "labels: %s\n", strings.Join(tb.Labels, ", "))
+	}
+	if len(tb.Assignees) > 0 {
+		fmt.Fprintf(opts.IO.Out, "assignees: %s\n", strings.Join(tb.Assignees, ", "))
+	}
+	if len(tb.ProjectTitles) > 0 {
+		fmt.Fprintf(opts.IO.Out, "projects: %s\n", strings.Join(tb.ProjectTitles, ", "))
+	}
+	if len(tb.Milestones) > 0 {
+		fmt.Fprintf(opts.IO.Out, "milestone: %s\n", tb.Milestones[0])
+	}
+	fmt.Fprintln(opts.IO.Out, "\nNo issue was created.")
+	return nil
+}
+
+func singleLinePreview(body string) string {
+	body = strings.ReplaceAll(body, "\r\n", "\n")
+	body = strings.ReplaceAll(body, "\r", "\n")
+	body = strings.ReplaceAll(body, "\n", "\\n")
+	const max = 240
+	if len(body) > max {
+		return body[:max] + "..."
+	}
+	return body
 }
 
 func generatePreviewURL(apiClient *api.Client, baseRepo ghrepo.Interface, tb prShared.IssueMetadataState, projectsV1Support gh.ProjectsV1Support) (string, error) {
