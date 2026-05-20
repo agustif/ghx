@@ -1,13 +1,16 @@
 package ctx
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/cli/cli/v2/git"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
+	"github.com/cli/cli/v2/pkg/cmd/auth/shared/sshidentity"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/spf13/cobra"
@@ -18,6 +21,7 @@ type ExplainOptions struct {
 	Config     func() (gh.Config, error)
 	HttpClient func() (*http.Client, error)
 	IO         *iostreams.IOStreams
+	GitClient  *git.Client
 	BaseRepo   func() (ghrepo.Interface, error)
 	Branch     func() (string, error)
 	Exporter   cmdutil.Exporter
@@ -32,6 +36,9 @@ type explainResult struct {
 	LoginScoped   bool         `json:"loginScoped"`
 	TokenSource   string       `json:"tokenSource"`
 	GitProtocol   string       `json:"gitProtocol"`
+	SSHIdentity   string       `json:"sshIdentity,omitempty"`
+	SSHRemote     bool         `json:"sshRemote,omitempty"`
+	SSHCommand    string       `json:"sshCommand,omitempty"`
 	Repository    *repoContext `json:"repository,omitempty"`
 	Branch        string       `json:"branch,omitempty"`
 	Warnings      []string     `json:"warnings,omitempty"`
@@ -55,6 +62,9 @@ var explainFields = []string{
 	"loginScoped",
 	"tokenSource",
 	"gitProtocol",
+	"sshIdentity",
+	"sshRemote",
+	"sshCommand",
 	"repository",
 	"branch",
 	"warnings",
@@ -86,6 +96,7 @@ func NewCmdExplain(f *cmdutil.Factory, runF func(*ExplainOptions) error) *cobra.
 	opts := &ExplainOptions{
 		Config:     f.Config,
 		HttpClient: f.HttpClient,
+		GitClient:  f.GitClient,
 		IO:         f.IOStreams,
 	}
 
@@ -122,6 +133,7 @@ func NewCmdDoctor(f *cmdutil.Factory, runF func(*ExplainOptions) error) *cobra.C
 	opts := &ExplainOptions{
 		Config:     f.Config,
 		HttpClient: f.HttpClient,
+		GitClient:  f.GitClient,
 		IO:         f.IOStreams,
 	}
 
@@ -213,6 +225,22 @@ func buildExplainResult(opts *ExplainOptions) (explainResult, error) {
 	if result.LoginSource == gh.ActiveUserSourceHost && len(authCfg.UsersForHost(host)) > 1 {
 		result.Warnings = append(result.Warnings, "active account is host-global while multiple accounts are configured; prefer GH_ACCOUNT, GH_ACCOUNT_SESSION, .ghaccount, or cwd scope")
 	}
+	if result.Login != "" {
+		result.SSHIdentity = sshidentity.Identity(cfg, host, result.Login)
+	}
+	if opts.GitClient != nil {
+		hasSSHRemote, err := sshidentity.HasSSHRemoteForHost(context.Background(), opts.GitClient, host)
+		if err == nil {
+			result.SSHRemote = hasSSHRemote
+			result.SSHCommand = sshidentity.CoreSSHCommand(context.Background(), opts.GitClient)
+			if hasSSHRemote && result.SSHIdentity == "" {
+				result.Warnings = append(result.Warnings, fmt.Sprintf("SSH remote is configured for %s but no identity is linked for %s; run ghx auth ssh link", host, result.Login))
+			}
+			if hasSSHRemote && result.SSHIdentity != "" && !strings.Contains(result.SSHCommand, result.SSHIdentity) {
+				result.Warnings = append(result.Warnings, "SSH remote identity is linked but repo-local core.sshCommand is not synced; run ghx auth ssh sync")
+			}
+		}
+	}
 
 	if opts.BaseRepo != nil {
 		if repo, err := opts.BaseRepo(); err == nil {
@@ -264,6 +292,10 @@ func printExplainResult(io *iostreams.IOStreams, result explainResult, doctor bo
 
 	fmt.Fprintf(io.Out, "- Token source: %s\n", valueOrPlaceholder(result.TokenSource))
 	fmt.Fprintf(io.Out, "- Git protocol: %s\n", valueOrPlaceholder(result.GitProtocol))
+	if result.SSHRemote {
+		fmt.Fprintf(io.Out, "- SSH identity: %s\n", valueOrPlaceholder(result.SSHIdentity))
+		fmt.Fprintf(io.Out, "- SSH command: %s\n", valueOrPlaceholder(result.SSHCommand))
+	}
 
 	if result.Repository != nil {
 		fmt.Fprintf(io.Out, "- Repository: %s (%s)\n", result.Repository.NameWithOwner, result.Repository.Host)

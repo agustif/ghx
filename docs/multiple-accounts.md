@@ -151,8 +151,9 @@ selects for a command, but it does not move tokens into a separate store.
 In side-by-side installs, `ghx api` may honor `GH_ACCOUNT`, `.ghaccount`, or a cwd binding while `git push` still calls
 the helper configured in git config. Current `ghx auth switch` best-effort syncs the host-specific HTTPS helper to the
 running `ghx` binary so GitHub HTTPS remotes follow the same account resolver. If a single repository still behaves
-wrongly, inspect local repository git config because it can override the global host helper. SSH remotes still use SSH
-keys directly; use HTTPS remotes when git operations must follow `ghx` account selection.
+wrongly, inspect local repository git config because it can override the global host helper. SSH remotes are key based,
+so use `ghx auth ssh link` to map each login to a private key and let `ghx auth switch` sync repo-local
+`core.sshCommand` for SSH checkouts.
 
 Finally, running `gh auth logout` presents a prompt when there are multiple choices for logout, and switches account
 if there are any remaining logged into the host:

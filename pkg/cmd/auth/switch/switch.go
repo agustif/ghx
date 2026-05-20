@@ -1,14 +1,17 @@
 package authswitch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/cli/cli/v2/git"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/pkg/cmd/auth/shared"
 	"github.com/cli/cli/v2/pkg/cmd/auth/shared/gitcredentials"
+	"github.com/cli/cli/v2/pkg/cmd/auth/shared/sshidentity"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/spf13/cobra"
@@ -21,6 +24,7 @@ type gitCredentialsConfigurer interface {
 type SwitchOptions struct {
 	IO                      *iostreams.IOStreams
 	Config                  func() (gh.Config, error)
+	GitClient               *git.Client
 	Prompter                shared.Prompt
 	CredentialsHelperConfig gitCredentialsConfigurer
 	Hostname                string
@@ -31,9 +35,10 @@ type SwitchOptions struct {
 
 func NewCmdSwitch(f *cmdutil.Factory, runF func(*SwitchOptions) error) *cobra.Command {
 	opts := SwitchOptions{
-		IO:       f.IOStreams,
-		Config:   f.Config,
-		Prompter: f.Prompter,
+		IO:        f.IOStreams,
+		Config:    f.Config,
+		GitClient: f.GitClient,
+		Prompter:  f.Prompter,
 	}
 
 	cmd := &cobra.Command{
@@ -198,6 +203,7 @@ func switchRun(opts *SwitchOptions) error {
 		fmt.Fprintf(opts.IO.ErrOut, "%s Set %s account for %s to %s\n",
 			cs.SuccessIcon(), opts.Scope, hostname, cs.Bold(username))
 		syncGitCredentialHelper(opts, hostname)
+		syncGitSSHIdentity(opts, cfg, hostname, username)
 
 		return nil
 	}
@@ -212,6 +218,7 @@ func switchRun(opts *SwitchOptions) error {
 	fmt.Fprintf(opts.IO.ErrOut, "%s Switched active account for %s to %s\n",
 		cs.SuccessIcon(), hostname, cs.Bold(username))
 	syncGitCredentialHelper(opts, hostname)
+	syncGitSSHIdentity(opts, cfg, hostname, username)
 
 	return nil
 }
@@ -230,4 +237,34 @@ func syncGitCredentialHelper(opts *SwitchOptions, hostname string) {
 
 	fmt.Fprintf(opts.IO.ErrOut, "%s Synced git credential helper for %s\n",
 		cs.SuccessIcon(), hostname)
+}
+
+func syncGitSSHIdentity(opts *SwitchOptions, cfg gh.Config, hostname, username string) {
+	if opts.GitClient == nil {
+		return
+	}
+
+	cs := opts.IO.ColorScheme()
+	identity := sshidentity.Identity(cfg, hostname, username)
+	if identity == "" {
+		hasSSHRemote, err := sshidentity.HasSSHRemoteForHost(context.Background(), opts.GitClient, hostname)
+		if err == nil && hasSSHRemote {
+			fmt.Fprintf(opts.IO.ErrOut, "%s SSH remote detected for %s; link an identity with: ghx auth ssh link --hostname %s --user %s --identity ~/.ssh/<key>\n",
+				cs.WarningIcon(), hostname, hostname, username)
+		}
+		return
+	}
+
+	synced, err := sshidentity.SyncRepoSSHCommand(context.Background(), opts.GitClient, hostname, identity)
+	if err != nil {
+		fmt.Fprintf(opts.IO.ErrOut, "%s Could not sync SSH identity for %s on %s: %s\n",
+			cs.WarningIcon(), username, hostname, err)
+		return
+	}
+	if !synced {
+		return
+	}
+
+	fmt.Fprintf(opts.IO.ErrOut, "%s Synced SSH identity for %s on %s to repo-local core.sshCommand\n",
+		cs.SuccessIcon(), username, hostname)
 }

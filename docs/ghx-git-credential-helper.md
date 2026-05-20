@@ -26,6 +26,10 @@ Successful `ghx auth switch` calls also sync the HTTPS credential helper for the
 binary. This keeps repo-scoped account choices and plain `git fetch` / `git push` on the same resolver without requiring
 a separate setup step after every account switch.
 
+For SSH remotes, use `ghx auth ssh`. SSH is key based and does not invoke the git credential helper. `ghx auth ssh link`
+stores an account-specific key path, and `ghx auth switch` best-effort syncs repo-local `core.sshCommand` when the
+current repository uses an SSH remote. See `docs/ghx-ssh-identities.md`.
+
 Configure a host that is not currently in `ghx auth status`:
 
 ```sh
@@ -69,7 +73,7 @@ If any host-specific output points at `gh auth git-credential`, git operations f
 - `gh auth setup-git` and `ghx auth setup-git` both write git config. The last setup command for a host controls which helper git invokes for that host.
 - `ghx auth switch` changes selected accounts inside `ghx` and best-effort syncs the host-specific HTTPS git credential
   helper to the running `ghx` binary.
-- SSH remotes still use SSH keys, not OAuth tokens. Use HTTPS remotes when account selection must follow `ghx`.
+- SSH remotes use `ghx auth ssh` identity mappings. HTTPS remotes use the credential helper.
 - Local repository git config can override global config. Inspect local config too if a single repository behaves differently.
 
 ## Rollback

@@ -2,16 +2,20 @@ package authswitch
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"testing"
 
+	"github.com/cli/cli/v2/git"
 	"github.com/cli/cli/v2/internal/config"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/keyring"
 	"github.com/cli/cli/v2/internal/prompter"
 	"github.com/cli/cli/v2/pkg/cmd/auth/shared/gitcredentials"
+	"github.com/cli/cli/v2/pkg/cmd/auth/shared/sshidentity"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/google/shlex"
@@ -520,4 +524,89 @@ func TestSwitchRunCwdScopeSyncsGitCredentialHelper(t *testing.T) {
 	require.Equal(t, "!/path/to/ghx auth git-credential", helperConfig.Helpers["credential.https://github.com.helper"].Cmd)
 	require.Equal(t, "!/path/to/ghx auth git-credential", helperConfig.Helpers["credential.https://gist.github.com.helper"].Cmd)
 	require.Contains(t, stderr.String(), "✓ Synced git credential helper for github.com")
+}
+
+func TestSwitchRunCwdScopeSyncsSSHIdentity(t *testing.T) {
+	cfg, _ := config.NewIsolatedTestConfig(t)
+	authCfg := cfg.Authentication()
+	_, err := authCfg.Login("github.com", "inactive-user", "inactive-user-token", "ssh", true)
+	require.NoError(t, err)
+	_, err = authCfg.Login("github.com", "active-user", "active-user-token", "ssh", true)
+	require.NoError(t, err)
+
+	identity := filepath.Join(t.TempDir(), "id_ed25519_inactive")
+	require.NoError(t, sshidentity.SetIdentity(cfg, "github.com", "inactive-user", identity))
+
+	repoDir := t.TempDir()
+	runGit(t, repoDir, "init", "--quiet")
+	runGit(t, repoDir, "remote", "add", "origin", "git@github.com:OWNER/REPO.git")
+
+	ios, _, _, stderr := iostreams.Test()
+	opts := SwitchOptions{
+		Config: func() (gh.Config, error) {
+			return cfg, nil
+		},
+		GitClient: &git.Client{RepoDir: repoDir},
+		IO:        ios,
+		Hostname:  "github.com",
+		Username:  "inactive-user",
+		Scope:     "cwd",
+		Selector:  repoDir,
+	}
+
+	err = switchRun(&opts)
+	require.NoError(t, err)
+
+	got := runGitOutput(t, repoDir, "config", "--local", "core.sshCommand")
+	require.Equal(t, "ssh -i "+identity+" -o IdentitiesOnly=yes\n", got)
+	require.Contains(t, stderr.String(), "✓ Synced SSH identity for inactive-user on github.com to repo-local core.sshCommand")
+}
+
+func TestSwitchRunWarnsWhenSSHRemoteHasNoLinkedIdentity(t *testing.T) {
+	cfg, _ := config.NewIsolatedTestConfig(t)
+	authCfg := cfg.Authentication()
+	_, err := authCfg.Login("github.com", "inactive-user", "inactive-user-token", "ssh", true)
+	require.NoError(t, err)
+	_, err = authCfg.Login("github.com", "active-user", "active-user-token", "ssh", true)
+	require.NoError(t, err)
+
+	repoDir := t.TempDir()
+	runGit(t, repoDir, "init", "--quiet")
+	runGit(t, repoDir, "remote", "add", "origin", "git@github.com:OWNER/REPO.git")
+
+	ios, _, _, stderr := iostreams.Test()
+	opts := SwitchOptions{
+		Config: func() (gh.Config, error) {
+			return cfg, nil
+		},
+		GitClient: &git.Client{RepoDir: repoDir},
+		IO:        ios,
+		Hostname:  "github.com",
+		Username:  "inactive-user",
+		Scope:     "cwd",
+		Selector:  repoDir,
+	}
+
+	err = switchRun(&opts)
+	require.NoError(t, err)
+
+	require.Contains(t, stderr.String(), "SSH remote detected for github.com; link an identity with: ghx auth ssh link")
+}
+
+func runGit(t *testing.T, repoDir string, args ...string) {
+	t.Helper()
+	client := &git.Client{RepoDir: repoDir}
+	cmd, err := client.Command(context.Background(), args...)
+	require.NoError(t, err)
+	require.NoError(t, cmd.Run())
+}
+
+func runGitOutput(t *testing.T, repoDir string, args ...string) string {
+	t.Helper()
+	client := &git.Client{RepoDir: repoDir}
+	cmd, err := client.Command(context.Background(), args...)
+	require.NoError(t, err)
+	output, err := cmd.Output()
+	require.NoError(t, err)
+	return string(output)
 }
