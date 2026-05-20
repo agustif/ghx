@@ -1,7 +1,7 @@
 # ghx API coverage
 
-Status: manual seed for generated reports
-Date: 2026-05-19
+Status: manual seed plus reproducible REST count
+Date: 2026-05-20
 
 This report compares the local `ghx` command surface against official GitHub REST and GraphQL surfaces. It is intentionally evidence-shaped so a later `ghx mine github` command can replace it with a generated report.
 
@@ -12,6 +12,28 @@ This report compares the local `ghx` command surface against official GitHub RES
 - REST docs version: GitHub REST docs show API version `2026-03-10` as latest on 2026-05-19.
 - GraphQL surface: live `ghx api graphql` introspection on 2026-05-19.
 - Official CLI reference: `https://cli.github.com/manual/gh`.
+- Repro command: `script/ghx-rest-coverage-summary /tmp/github-rest-openapi.json`.
+
+## Current quantitative gap
+
+Vanilla `gh` has broad raw API reachability through `gh api`, including the
+GraphQL endpoint, but it does not expose generated operation metadata, coverage
+states, or operation-to-command mapping. That is the gap `ghx` is starting to
+close.
+
+| Coverage question | Vanilla `gh` | Current `ghx` | Gap to full explicit coverage |
+| --- | ---: | ---: | ---: |
+| Raw REST reachability through `api` | broad escape hatch | broad escape hatch | not the target |
+| Raw GraphQL reachability through `api graphql` | broad escape hatch | broad escape hatch | not the target |
+| REST operations with explicit generated metadata | 0 tracked | 13 of 1186 (1.1%) | 1173 operations (98.9%) |
+| REST operations with coverage state and proposed command | 0 tracked | 13 of 1186 (1.1%) | 1173 operations (98.9%) |
+| GraphQL schema snapshot validation | 0 tracked | 0 tracked | full schema validation remains |
+
+The first `ghx` metadata slice is intentionally small: Actions pending
+deployments, hosted runners, workflow jobs and artifacts, checks list/rerun,
+and deployments/statuses. The next useful milestone is not more hand-written
+rows, but a generated coverage report that marks every REST operation as
+`first-class`, `thin`, `raw-api`, or `missing`.
 
 High-volume REST tags from the OpenAPI snapshot:
 
@@ -22,13 +44,21 @@ High-volume REST tags from the OpenAPI snapshot:
 | `orgs` | 108 | `org list` exists, but roles, outside collaborators, fine-grained PATs, rules, webhooks, API insights, and custom properties are mostly missing. |
 | `issues` | 55 | Good base issue CRUD, plus ghx issue search improvements. Issue dependencies, issue field values, issue types, timeline, and sub-issue workflows need richer operational commands. |
 | `codespaces` | 48 | Existing command group is broad enough for now. |
+| `users` | 47 | User lookup exists indirectly, but global user administration and audit workflows remain raw. |
 | `apps` | 37 | Mostly raw for app installations, permissions, and webhook operations. |
 | `activity` | 32 | Notifications and subscriptions are not a first-class agent queue. |
 | `teams` | 32 | Org/team access diagnosis is raw or spread across API calls. |
 | `copilot` | 31 | CLI has `copilot`, but metrics, user management, content exclusion, and coding-agent policy are not account-safe admin workflows. |
+| `agents` | 30 | Coding-agent task and policy flows need account-safe handoff and status commands. |
+| `copilot-spaces` | 28 | Spaces operations are raw API candidates until a concrete workflow emerges. |
+| `packages` | 27 | Package inventory and cleanup are raw or dashboard-oriented. |
+| `pulls` | 27 | PR CRUD is strong, but merge queue, thread, and policy diagnosis remain thin. |
 | `projects` | 26 | `project` exists, but Projects v2 status, field health, and PR sync workflows remain partial. |
 | `dependabot` | 25 | No unified security inbox. |
+| `migrations` | 22 | Organization migration status and recovery remain raw API workflows. |
 | `code-scanning` | 21 | No first-class security inbox. |
+| `code-security` | 20 | Security configuration rollout and policy diagnosis remain raw. |
+| `checks` | 12 | `pr checks` exists, and ghx now has a first checks inventory/rerun dry-run slice. |
 | `secret-scanning` | 9 | No first-class security inbox. |
 | `agent-tasks` | 5 | `agent-task` exists, but handoff, progress, and task-to-PR workflows are still immature. |
 

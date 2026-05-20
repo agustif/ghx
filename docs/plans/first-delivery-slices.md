@@ -21,7 +21,7 @@ First principles:
 Next after first-class subissues:
 
 1. Convert the existing `ghx` roadmap into parent issues and acceptance-sized subissues.
-2. Ship `ghx ctx explain --json` as the identity and intent primitive.
+2. Ship `ghx ctx explain --json` as the identity and intent primitive. Shipped in the local fork with `ghx ctx explain` and `ghx ctx doctor`.
 3. Use generated API metadata for `ghx api explain <operation-id>`.
 4. Build read-only `ghx pr ready` on top of `ctx`, review threads, checks, rulesets, and merge queue state.
 5. Build `ghx ci doctor` with Actions run/job/log triage and pending deployment visibility.
@@ -43,6 +43,12 @@ Acceptance:
 - supports `--json`
 - never mutates config unless called through future `ghx ctx bind`
 - updates [ghx vs gh](../ghx-vs-gh.md) when the slice becomes shipped behavior
+
+Current implementation:
+
+- `ghx ctx explain` reports host, host source, login, login source, login selector, scoped-login state, token source, git protocol, repository, branch, and warnings.
+- `ghx ctx doctor` exits non-zero when there is no active account, no active token, no default host, or the resolved repository host differs from the active host.
+- The first slice is intentionally read-only and does not inspect token scopes over the network. Scope checks remain in `ghx auth status --json hosts`.
 
 ## Slice 2: `ghx api explain`
 

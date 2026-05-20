@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?define GhxProductName = "ghx" ?>
+<?define GhxManufacturer = "agustif" ?>
+<?define GhxInstallDirName = "ghx" ?>
+<?define GhxExecutableName = "ghx.exe" ?>
+<?define GhxRegistryKey = "SOFTWARE\agustif\ghx" ?>
+
+<!--
+  Replace these TODO values with stable fork-owned GUIDs before building an MSI.
+  They must not reuse upstream GitHub CLI UpgradeCode or component GUID values.
+-->
+<?define GhxUpgradeCodeX64 = "TODO-X64-UPGRADE-CODE" ?>
+<?define GhxUpgradeCodeX86 = "TODO-X86-UPGRADE-CODE" ?>
+<?define GhxUpgradeCodeArm64 = "TODO-ARM64-UPGRADE-CODE" ?>
+<?define GhxUpgradeCodeArm = "TODO-ARM-UPGRADE-CODE" ?>
+
+<!-- Required production records, not secrets:
+  - Azure Code Signing account owner
+  - certificate profile name
+  - tenant id owner
+  - rollback owner
+  - PATH mutation policy
+  - upstream gh coexistence smoke evidence
+-->

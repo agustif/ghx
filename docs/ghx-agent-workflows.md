@@ -20,9 +20,10 @@ Preferred command path:
 
 ```sh
 ghx ctx explain --json
+ghx ctx doctor --json warnings,repository,loginSource
 ```
 
-Until `ghx ctx` exists, use:
+For token scope details, use:
 
 ```sh
 ghx auth status

@@ -10,6 +10,7 @@ import (
 	cmdCreate "github.com/cli/cli/v2/pkg/cmd/pr/create"
 	cmdDiff "github.com/cli/cli/v2/pkg/cmd/pr/diff"
 	cmdEdit "github.com/cli/cli/v2/pkg/cmd/pr/edit"
+	cmdGate "github.com/cli/cli/v2/pkg/cmd/pr/gate"
 	cmdList "github.com/cli/cli/v2/pkg/cmd/pr/list"
 	cmdMerge "github.com/cli/cli/v2/pkg/cmd/pr/merge"
 	cmdReady "github.com/cli/cli/v2/pkg/cmd/pr/ready"
@@ -58,6 +59,7 @@ func NewCmdPR(f *cmdutil.Factory) *cobra.Command {
 		cmdCheckout.NewCmdCheckout(f, nil),
 		cmdChecks.NewCmdChecks(f, nil),
 		cmdReview.NewCmdReview(f, nil),
+		cmdGate.NewCmdGate(f),
 		cmdMerge.NewCmdMerge(f, nil),
 		cmdUpdateBranch.NewCmdUpdateBranch(f, nil),
 		cmdReady.NewCmdReady(f, nil),

@@ -1,9 +1,9 @@
 # ghx release operator runbook
 
 Status: active
-Date: 2026-05-19
+Date: 2026-05-20
 Issue: [#70](https://github.com/agustif/ghx/issues/70)
-Related docs: [Releasing](../releasing.md), [Release process deep dive](../release-process-deep-dive.md), [ghx vs gh](../ghx-vs-gh.md), [First-class release migration](ghx-first-class-release-migration.md)
+Related docs: [Releasing](../releasing.md), [Release process deep dive](../release-process-deep-dive.md), [ghx vs gh](../ghx-vs-gh.md), [First-class release migration](ghx-first-class-release-migration.md), [Production release readiness](ghx-production-release-readiness.md)
 
 ## Goal
 
@@ -19,6 +19,10 @@ release operator flow
 |  |- clean origin/trunk snapshot
 |  |- confirm release inputs and version tag
 |  `- confirm branch ownership
+|- readiness
+|  |- run no-publish readiness workflow
+|  |- inspect package artifacts
+|  `- record production blockers
 |- staging release
 |  |- run script/release with --staging
 |  |- capture run id
@@ -50,6 +54,36 @@ git rev-parse --short origin/trunk
 ```
 
 Do not proceed if the worktree is dirty or if the branch tip is not the expected release base.
+
+## Readiness gate
+
+Before staging, run the secret-free readiness lane:
+
+```sh
+packaging/ghx/scripts/check-release-readiness
+notes="$(mktemp)"
+printf 'ghx release readiness validation.\n' >"$notes"
+goreleaser release -f .goreleaser-ghx.yml --snapshot --clean --release-notes="$notes"
+make smoke-ghx-release
+GHX_SMOKE_REQUIRE_PACKAGE_TOOLS=1 packaging/ghx/scripts/smoke-release-artifacts
+```
+
+For a remote proof run, use:
+
+```text
+Actions -> ghx Release Readiness -> Run workflow
+```
+
+This gate is allowed to pass while production blockers are still reported. The
+strict production command is the stop check:
+
+```sh
+packaging/ghx/scripts/check-release-readiness --strict-production
+```
+
+If strict production readiness fails, either fix the blocker in a fork-owned
+release slice or record the surface as explicitly unsupported for that release.
+Do not silently fall back to upstream package, signing, or Homebrew automation.
 
 ## Staging release
 
@@ -84,9 +118,9 @@ Issue [#69](https://github.com/agustif/ghx/issues/69) owns the release smoke mat
 | Surface | Build or install command | Operator check |
 | --- | --- | --- |
 | Source install | `make bin/ghx` then `make install-ghx prefix=$HOME/.local` | `ghx version` and `ghx auth status` |
-| Linux package | Release artifact produced by the deployment workflow | `ghx version` after package install |
-| macOS archive or pkg | Release artifact produced by the deployment workflow | `ghx version` after install |
-| Windows zip or MSI | Release artifact produced by the deployment workflow | `ghx.exe version` after install |
+| Linux package | Readiness artifact, then release artifact produced by the deployment workflow | artifact smoke, then `ghx version` after package install |
+| macOS archive or pkg | Readiness artifact, then release artifact produced by the deployment workflow | archive smoke, then `ghx version` after install |
+| Windows zip or MSI | Readiness artifact, then release artifact produced by the deployment workflow | zip smoke, then `ghx.exe version` after install |
 | Git helper | `ghx auth setup-git` | `git config --get credential.helper` |
 | Side-by-side install | `gh` plus `ghx` on the same machine | both `gh version` and `ghx version` succeed |
 
@@ -140,5 +174,6 @@ Rollback should always leave the previous `ghx` release or the stock `gh` instal
 - [docs/release-process-deep-dive.md](../release-process-deep-dive.md)
 - [docs/ghx-vs-gh.md](../ghx-vs-gh.md)
 - [docs/plans/ghx-first-class-release-migration.md](ghx-first-class-release-migration.md)
+- [docs/plans/ghx-production-release-readiness.md](ghx-production-release-readiness.md)
 - [issue #70](https://github.com/agustif/ghx/issues/70)
 - [issue #69](https://github.com/agustif/ghx/issues/69)

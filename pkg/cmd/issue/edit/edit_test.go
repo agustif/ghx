@@ -108,8 +108,27 @@ func TestNewCmdEdit(t *testing.T) {
 			wantsErr: false,
 		},
 		{
+			name:  "body literal",
+			input: "23 --body-literal 'literal `code` body'",
+			output: EditOptions{
+				IssueNumbers: []int{23},
+				Editable: prShared.Editable{
+					Body: prShared.EditableString{
+						Value:  "literal `code` body",
+						Edited: true,
+					},
+				},
+			},
+			wantsErr: false,
+		},
+		{
 			name:     "both body and body-file flags",
 			input:    "23 --body foo --body-file bar",
+			wantsErr: true,
+		},
+		{
+			name:     "body literal and body-file flags",
+			input:    "23 --body-literal literal --body-file bar",
 			wantsErr: true,
 		},
 		{

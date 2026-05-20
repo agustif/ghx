@@ -4,6 +4,7 @@ Status: active
 Date: 2026-05-20
 Owner issues: [#60](https://github.com/agustif/ghx/issues/60), [#61](https://github.com/agustif/ghx/issues/61), [#62](https://github.com/agustif/ghx/issues/62), [#63](https://github.com/agustif/ghx/issues/63)
 Parent plan: [First-class ghx release and automation migration](ghx-first-class-release-migration.md)
+Readiness gate: [ghx production release readiness](ghx-production-release-readiness.md)
 
 ## Goal
 
@@ -63,6 +64,11 @@ It does not publish anything. `release.disable: true` stays in place, and the va
 
 `.goreleaser.yml` remains the upstream-compatible `gh` release config.
 
+`packaging/ghx/` now holds the package-channel templates and secret-free
+readiness scripts. These templates are not publication source of truth yet. They
+record the required owner, signing, repository, rollback, and smoke-evidence
+fields that must be filled before a channel becomes user-facing.
+
 ## Linux package channel
 
 Issue: [#60](https://github.com/agustif/ghx/issues/60)
@@ -95,6 +101,8 @@ Production gates:
 - install the rpm on a disposable Fedora, RHEL-like, or openSUSE host where upstream `gh` is already installed
 - prove `gh version` and `ghx version` both work after install
 - prove removing `ghx` does not remove upstream `gh`
+- fill [apt repository template](../../packaging/ghx/linux/apt-repository.template.md) before apt docs or repository publication
+- fill [rpm repository template](../../packaging/ghx/linux/rpm-repository.template.md) before rpm docs or repository publication
 - define fork-owned apt and rpm repository paths before documenting package-manager install commands
 - define fork-owned package signing keys before publishing repository metadata
 
@@ -125,6 +133,7 @@ zipinfo dist/ghx_*_macOS_*.zip
 
 Production gates:
 
+- fill [macOS pkg identity inputs](../../packaging/ghx/macos/pkg-identity.env.example) with fork-owned package identity decisions
 - build a fork-owned universal pkg from `bin/ghx`
 - verify the package payload with `pkgutil --payload-files`
 - install on a clean macOS host with upstream `gh` already installed
@@ -164,6 +173,7 @@ powershell -NoProfile -Command "Get-ChildItem dist -Filter 'ghx_*_windows_*.zip'
 
 Production gates:
 
+- fill [Windows MSI identity template](../../packaging/ghx/windows/msi-identity.wxi.template) with fork-owned WiX identity decisions
 - build MSI output from fork-owned WiX metadata
 - inspect MSI tables for product name, component paths, registry keys, UpgradeCode values, and environment changes
 - install on Windows with upstream GitHub CLI already installed
@@ -200,6 +210,7 @@ brew uninstall ghx
 
 Production gates:
 
+- fill [Homebrew formula template](../../packaging/ghx/homebrew/Formula/ghx.rb.template) only after a tap owner and release asset policy exist
 - decide tap owner and repository
 - decide token or GitHub App ownership for formula bumps
 - decide prerelease exclusion rules
@@ -229,11 +240,13 @@ This slice must not:
 - `.goreleaser-ghx.yml` validates with local `goreleaser check`
 - any nFPM metadata uses `ghx` package, binary, manpage, and completion names
 - platform docs name macOS pkg, Windows MSI, signing, notarization, and Homebrew gates explicitly
+- `packaging/ghx` templates record non-secret channel decisions before publication
 - side-by-side install and upstream `gh` non-interference stay visible
 - package-manager docs keep pointing users to source install until package channels are fork-owned
 
 ## Evidence anchors
 
+- [packaging/ghx readiness tree](../../packaging/ghx/README.md)
 - [.goreleaser-ghx.yml](../../.goreleaser-ghx.yml)
 - [.goreleaser.yml](../../.goreleaser.yml)
 - [script/pkgmacos](../../script/pkgmacos)

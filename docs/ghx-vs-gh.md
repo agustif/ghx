@@ -55,6 +55,7 @@ The shipped fork delta is:
 - a rebranded `ghx` binary and source install target
 - scoped account selection through env, session, nearest `.ghaccount`, and cwd bindings
 - visible account-source evidence in `auth status`
+- read-only `ctx explain` and `ctx doctor` commands for account and repository intent checks
 - `ghx` git credential helper recognition
 - issue subissue commands
 - parent issue creation through `issue create --parent`
@@ -67,7 +68,6 @@ Docs such as [the gap map](ghx-gap-map.md), [first delivery slices](plans/first-
 
 Examples of planned surfaces that are not currently shipped as first-class commands:
 
-- `ghx ctx`
 - `ghx api explain`
 - `ghx pr ready`
 - `ghx ci doctor`

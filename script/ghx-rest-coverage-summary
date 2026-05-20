@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+spec_path="${1:-}"
+if [[ -z "${spec_path}" ]]; then
+	tmp_dir="${TMPDIR:-/tmp}"
+	spec_path="${tmp_dir%/}/github-rest-openapi.json"
+	curl -fsSL \
+		"https://raw.githubusercontent.com/github/rest-api-description/main/descriptions-next/api.github.com/api.github.com.json" \
+		-o "$spec_path"
+fi
+
+if [[ ! -f "$spec_path" ]]; then
+	echo "OpenAPI spec not found: $spec_path" >&2
+	exit 1
+fi
+
+rest_count="$(jq '[.paths[] | to_entries[] | select(.value.operationId != null)] | length' "$spec_path")"
+registry_count="$(rg -n 'OperationID:\s*"' internal/ghapi/rest/registry.go | wc -l | tr -d ' ')"
+
+printf '# ghx REST coverage summary\n\n'
+printf 'Source: `%s`\n\n' "$spec_path"
+printf '| Metric | Count |\n'
+printf '| --- | ---: |\n'
+printf '| REST operations in OpenAPI snapshot | %s |\n' "$rest_count"
+printf '| ghx explicit operation metadata entries | %s |\n' "$registry_count"
+printf '| remaining explicit metadata gap | %s |\n' "$((rest_count - registry_count))"
+printf '\n'
+printf '## Top REST Tags\n\n'
+printf '| REST tag | Operations |\n'
+printf '| --- | ---: |\n'
+jq -r '
+	[.paths[] | to_entries[] | select(.value.operationId != null) | .value.tags[]?]
+	| group_by(.)
+	| map({tag: .[0], count: length})
+	| sort_by(-.count)
+	| .[:25][]
+	| "| `\(.tag)` | \(.count) |"
+' "$spec_path"

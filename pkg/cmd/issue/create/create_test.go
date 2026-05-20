@@ -96,6 +96,25 @@ func TestNewCmdCreate(t *testing.T) {
 			},
 		},
 		{
+			name:     "body literal",
+			tty:      false,
+			cli:      "-t mytitle --body-literal 'literal `code` body'",
+			wantsErr: false,
+			wantsOpts: CreateOptions{
+				Title:       "mytitle",
+				Body:        "literal `code` body",
+				RecoverFile: "",
+				WebMode:     false,
+				Interactive: false,
+			},
+		},
+		{
+			name:     "body and body literal",
+			tty:      false,
+			cli:      "-t mytitle --body body --body-literal literal",
+			wantsErr: true,
+		},
+		{
 			name:     "parent issue",
 			tty:      false,
 			cli:      `-t child -b body --parent 123`,
@@ -212,6 +231,26 @@ func TestNewCmdCreate(t *testing.T) {
 			cli:      "--editor",
 			wantsErr: true,
 		},
+		{
+			name:     "dry-run and web",
+			tty:      false,
+			cli:      "-t mytitle -b body --dry-run --web",
+			wantsErr: true,
+		},
+		{
+			name:     "dry-run",
+			tty:      false,
+			cli:      "-t mytitle -b body --dry-run",
+			wantsErr: false,
+			wantsOpts: CreateOptions{
+				Title:       "mytitle",
+				Body:        "body",
+				RecoverFile: "",
+				WebMode:     false,
+				Interactive: false,
+				DryRun:      true,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -262,6 +301,7 @@ func TestNewCmdCreate(t *testing.T) {
 			assert.Equal(t, tt.wantsOpts.Interactive, opts.Interactive)
 			assert.Equal(t, tt.wantsOpts.Template, opts.Template)
 			assert.Equal(t, tt.wantsOpts.Parent, opts.Parent)
+			assert.Equal(t, tt.wantsOpts.DryRun, opts.DryRun)
 		})
 	}
 }
@@ -296,6 +336,33 @@ func Test_createRun(t *testing.T) {
 			},
 			wantsBrowse: "https://github.com/OWNER/REPO/issues/new?body=hello+cli&title=myissue",
 			wantsStderr: "Opening https://github.com/OWNER/REPO/issues/new in your browser.\n",
+		},
+		{
+			name: "dry-run title and body",
+			opts: CreateOptions{
+				Detector: &fd.EnabledDetectorMock{},
+				Title:    "myissue",
+				Body:     "hello\ncli",
+				DryRun:   true,
+			},
+			httpStubs: func(r *httpmock.Registry) {
+				r.Register(
+					httpmock.GraphQL(`query IssueRepositoryInfo\b`),
+					httpmock.StringResponse(`
+						{ "data": { "repository": {
+							"id": "REPOID",
+							"hasIssuesEnabled": true
+						} } }`))
+			},
+			wantsStdout: heredoc.Doc(`
+				Would create issue in OWNER/REPO
+
+				title: myissue
+				body: hello\ncli
+
+				No issue was created.
+			`),
+			wantsStderr: "\nCreating issue in OWNER/REPO\n\n",
 		},
 		{
 			name: "assignee",

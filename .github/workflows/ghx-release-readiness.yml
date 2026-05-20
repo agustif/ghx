@@ -1,0 +1,114 @@
+name: ghx Release Readiness
+run-name: ghx release readiness / ${{ inputs.ref || github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag, or SHA to validate. Defaults to the workflow ref.
+        required: false
+        type: string
+      version:
+        description: Snapshot version to embed during readiness validation.
+        required: false
+        default: v0.0.0-readiness
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GORELEASER_CONFIG: .goreleaser-ghx.yml
+  GORELEASER_VERSION: v2.13.1
+  RELEASE_NOTES_FILE: ghx-release-readiness-notes.md
+
+jobs:
+  readiness:
+    name: Secret-free release readiness
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install package inspection tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y rpm unzip
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v7.2.2
+        with:
+          version: ${{ env.GORELEASER_VERSION }}
+          install-only: true
+
+      - name: Check release readiness contract
+        run: packaging/ghx/scripts/check-release-readiness
+
+      - name: Create temporary readiness tag
+        env:
+          TAG_NAME: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]; then
+            echo "Invalid version. Expected v1.2.3 or v1.2.3-suffix." >&2
+            exit 1
+          fi
+          git tag -f "$TAG_NAME"
+
+      - name: Write readiness release notes
+        run: |
+          set -euo pipefail
+          cat >"$RELEASE_NOTES_FILE" <<'NOTES'
+          ghx release readiness validation.
+
+          This workflow validates the fork-owned no-publish readiness lane only.
+          It must not publish GitHub Releases, docs, Homebrew formulae,
+          package-manager repositories, signing output, attestations, or
+          external artifacts.
+          NOTES
+
+      - name: Build GoReleaser readiness snapshot
+        run: |
+          set -euo pipefail
+          goreleaser release \
+            -f "$GORELEASER_CONFIG" \
+            --snapshot \
+            --clean \
+            --release-notes="$RELEASE_NOTES_FILE"
+
+      - name: Smoke ghx source release identity
+        run: make smoke-ghx-release
+
+      - name: Smoke ghx release artifacts
+        env:
+          GHX_SMOKE_REQUIRE_PACKAGE_TOOLS: "1"
+        run: packaging/ghx/scripts/smoke-release-artifacts
+
+      - name: Upload ghx readiness artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ghx-release-readiness-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            dist/ghx_*.tar.gz
+            dist/ghx_*.zip
+            dist/ghx_*.deb
+            dist/ghx_*.rpm
+            dist/ghx_*_checksums.txt
