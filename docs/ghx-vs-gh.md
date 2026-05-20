@@ -22,6 +22,7 @@ Snapshot used for this page:
 | Issue subissues | No first-class command group in the compared upstream snapshot. | Adds a native subissue command group with JSON output for listings. | `ghx issue subissue list/add/remove/reprioritize`, alias `ghx issue subissues`. |
 | Issue creation parent link | Regular issue creation has no parent issue flag in the compared upstream snapshot. | Can create a new issue as a subissue of an existing issue in the same repo. | `ghx issue create --parent 123 --title "Child" --body-file body.md`. |
 | Issue search fields | `gh issue list --search` does not expose issue-field scoping in the compared upstream snapshot. | Search can be constrained to issue title, body, and comments. | `ghx issue list --search "runner failed" --match body,comments`. |
+| API coverage mining | Regular `gh` has `gh api`, but no generated operation registry, schema coverage report, or operation-to-command map. | Adds generated REST and GraphQL coverage reports plus the curated `ghx api explain` metadata seed. | `ghx mine github --source rest --format json`, `ghx api explain checks/list-for-ref`. |
 | Runtime update and version links | Update checks and changelog links point at `cli/cli`, and Homebrew users can be told to run `brew upgrade gh`. | `ghx` update checks and version links point at `agustif/ghx`; `ghx` does not print the upstream `brew upgrade gh` hint. | `ghx --version`, update notifier output. |
 | Fork documentation | Upstream docs describe regular `gh` development and usage. | Adds fork-specific ADRs, RFCs, plans, research notes, API coverage reports, and operational gap maps. | Start at `docs/ghx.md`. |
 | Generated reference | The public manual at `cli.github.com/manual` is generated for upstream `gh`. | `ghx` generated reference can be produced locally with `--command-name ghx`, but is not published to the upstream site. | `go run ./cmd/gen-docs --website --doc-path dist/ghx-manual --command-name ghx`. |
@@ -60,6 +61,8 @@ The shipped fork delta is:
 - issue subissue commands
 - parent issue creation through `issue create --parent`
 - field-scoped issue text search through `issue list --match`
+- generated API coverage mining through `mine github`
+- generated REST operation metadata through `api explain`
 - fork-local docs, ADRs, RFCs, plans, research notes, and gap maps
 
 ## What is roadmap, not shipped
@@ -68,7 +71,7 @@ Docs such as [the gap map](ghx-gap-map.md), [first delivery slices](plans/first-
 
 Examples of planned surfaces that are not currently shipped as first-class commands:
 
-- `ghx api explain`
+- `ghx pr gate explain`
 - `ghx pr ready`
 - `ghx ci doctor`
 - `ghx rules explain`
@@ -278,6 +281,34 @@ returns:
 ```text
 specify `--search` when using `--match`
 ```
+
+## Generated API coverage mining
+
+Regular `gh` exposes `gh api` as a raw REST and GraphQL escape hatch. `ghx`
+keeps that behavior and adds generated coverage mining plus a curated REST
+metadata explorer.
+
+```sh
+ghx mine github --source all --format md
+ghx mine github --source rest --format json --rest-openapi /tmp/github-rest-openapi.json
+ghx mine github --source graphql --format json --graphql-schema /tmp/github-graphql-schema.json
+ghx api explain checks/list-for-ref
+ghx api explain --list --tag actions --coverage missing
+```
+
+Implemented divergence:
+
+- `pkg/cmd/mine` registers the generated coverage mining command.
+- `internal/ghapi/coverage` builds local command inventory, REST OpenAPI
+  coverage rows, GraphQL schema rows, and Markdown/JSON renderers.
+- `internal/ghapi/rest` defines the curated REST metadata seed used by
+  `ghx api explain`.
+- `pkg/cmd/api/explain.go` exposes operation lookup, list filters, source
+  metadata, pagination hints, coverage state, and raw command generation.
+
+This is not a claim that regular `gh` cannot reach these endpoints. The
+difference is that `ghx` can now explain known operations and generate a
+reviewable coverage map without leaving the CLI.
 
 ## Fork-specific documentation
 

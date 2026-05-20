@@ -21,7 +21,8 @@ The mining lane should produce reports, not automatic product decisions.
 
 ## Consequences
 
-- `ghx mine github` should generate markdown and JSON reports with source links.
+- `ghx mine github` generates Markdown and JSON reports with source links for
+  REST, GraphQL, and local command inventory.
 - Report output should separate missing API coverage from missing high-level command workflows.
 - Generated reports should be stable enough to diff in PRs.
 - Human review still decides whether to build, wrap, bundle, defer, or ignore a candidate.
@@ -30,7 +31,7 @@ The mining lane should produce reports, not automatic product decisions.
 
 - Create `docs/ghx-official-surface-report.md`.
 - Create `docs/ghx-api-coverage.md`.
-- Build `ghx mine github --source rest`.
-- Build `ghx mine github --source graphql`.
+- Add drift automation around `ghx mine github --source rest`.
+- Add curated GraphQL operation validation on top of `ghx mine github --source graphql`.
 - Build `ghx mine github --source docs`.
 - Build `ghx mine github --source extensions`.

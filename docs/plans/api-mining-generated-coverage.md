@@ -1,8 +1,8 @@
 # API mining and generated coverage automation
 
-Status: partial implementation
+Status: generated miner implemented, drift workflow pending
 Epic: https://github.com/agustif/ghx/issues/20
-Branch: `af/plan-api-mining-generated-coverage`
+Branch: `codex/ghx-api-coverage-miner`
 
 This plan turns the manual REST/OpenAPI and GraphQL mining into repeatable local and CI workflows.
 
@@ -18,10 +18,10 @@ This plan turns the manual REST/OpenAPI and GraphQL mining into repeatable local
 
 ## DAG
 
-1. Add pinned source manifest for REST OpenAPI and GraphQL schema snapshots.
-2. Generate a coverage report from REST tags and local command inventory.
-3. Add GraphQL operation validation for curated ghx queries.
-4. Build `ghx api explain` around operation metadata before generated clients are used by commands.
+1. Done for REST seed: add pinned source manifest for the curated REST OpenAPI subset.
+2. Done for first miner: generate REST coverage from OpenAPI and local command inventory.
+3. Partial: add GraphQL schema inventory from live introspection or schema JSON. Curated GraphQL operation validation remains.
+4. Done: build `ghx api explain` around operation metadata before generated clients are used by commands.
 5. Pilot generated REST adapters on a narrow Actions/Checks/Deployments subset.
 6. Add CI drift detection once generated output is stable and reviewable.
 
@@ -39,6 +39,31 @@ a giant generated client:
   `ghx api` escape hatch.
 - JSON output is field-selected through the existing `--json`, `--jq`, and
   `--template` command contract.
+
+## Implemented slice: `ghx mine github`
+
+This branch adds the first full-surface miner:
+
+- `pkg/cmd/mine` registers `ghx mine <command>` as a root command.
+- `pkg/cmd/mine/github` implements `ghx mine github`.
+- `internal/ghapi/coverage` builds command, REST, and GraphQL report models.
+- REST mining reads the pinned OpenAPI URL by default, accepts a file or URL
+  through `--rest-openapi`, and uses the plain HTTP client for public spec
+  downloads so auth headers are not sent to `raw.githubusercontent.com`.
+- GraphQL mining live-introspects the selected host or reads deterministic
+  introspection JSON through `--graphql-schema`.
+- Markdown output is summary-first and uses `--detail --limit N` for rows.
+- JSON output is untruncated and intended for agents, `jq`, CI, and future drift
+  checks.
+
+Current command shape:
+
+```sh
+ghx mine github --source all --format md
+ghx mine github --source rest --format json --rest-openapi /tmp/github-rest-openapi.json
+ghx mine github --source graphql --format json --graphql-schema /tmp/github-graphql-schema.json
+ghx mine github --source rest --tag actions --state missing --detail
+```
 
 Current quantitative gap:
 
@@ -88,10 +113,10 @@ Issue coverage:
 
 | Issue | Coverage from this slice | Remaining work |
 | --- | --- | --- |
-| https://github.com/agustif/ghx/issues/20 | Adds the first reusable API metadata substrate and explain surface. | Add full mining command and drift workflow. |
-| https://github.com/agustif/ghx/issues/35 | Pins a source ref/checksum and exposes machine-readable coverage for a focused REST subset. | Generate the full REST coverage report from a pinned snapshot. |
-| https://github.com/agustif/ghx/issues/36 | No GraphQL mutation in this slice. | Add schema snapshot and curated operation validation. |
-| https://github.com/agustif/ghx/issues/37 | Implements `gh api explain <operation-id>` with JSON and list output. | Expand generated metadata as more operations are mined. |
+| https://github.com/agustif/ghx/issues/20 | Adds reusable API metadata, explain surface, and generated miner. | Add drift workflow and generated proxy pilot. |
+| https://github.com/agustif/ghx/issues/35 | Generates full REST coverage reports from a pinned or supplied OpenAPI snapshot. | Add reviewed coverage overlays beyond the 13-operation seed. |
+| https://github.com/agustif/ghx/issues/36 | Adds GraphQL schema inventory from live introspection or schema JSON. | Add curated GraphQL operation validation and coverage registry. |
+| https://github.com/agustif/ghx/issues/37 | Implements `ghx api explain <operation-id>` with JSON and list output. | Expand generated metadata as more operations are mined. |
 | https://github.com/agustif/ghx/issues/38 | Source ref and checksum are present for future drift comparison. | Add scheduled drift workflow and reviewable snapshots. |
 | https://github.com/agustif/ghx/issues/39 | Seeds Actions, checks, and deployments metadata without touching handwritten commands. | Add typed adapter pilot after metadata review. |
 
@@ -105,7 +130,9 @@ Issue coverage:
 ## Validation
 
 - `go test ./internal/ghapi/rest ./pkg/cmd/api`
+- `go test ./internal/ghapi/coverage ./pkg/cmd/mine/...`
 - `go test ./internal/...`
 - `go test ./api/...`
-- Generated coverage command against the pinned REST snapshot.
-- GraphQL schema validation against GitHub.com with `GH_ACCOUNT=agustif`.
+- `ghx mine github --source rest --format json --rest-openapi /tmp/github-rest-openapi.json`
+- `ghx mine github --source graphql --format json --graphql-schema /tmp/github-graphql-schema.json`
+- Live GraphQL schema validation against GitHub.com with `GH_ACCOUNT=agustif`.
